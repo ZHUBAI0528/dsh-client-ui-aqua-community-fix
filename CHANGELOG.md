@@ -14,6 +14,11 @@
 - 修复：冷启动时 GPU 尚未就绪会让流体画布永久不绘制——改为退避重试（最多 8 次，约 12s）
 - 修复：输入框卡片与其下方状态栏之间的 6px 缝隙（合并为一块连续玻璃）
 - 发布配置：`files` 补上 `cordis.patch.yml`（此前发布包缺失该文件，安装后插件不会加载）；peer 依赖范围放宽为 `>=0.1.0-rc.5 <0.3.0` 以兼容 0.2.x 宿主；新增 `typecheck` 脚本
+- 移除「悬停下压」（3D 倾斜）及其存储键：滚动时的抖动来源之一，功能已废弃
+- 更名：包名改为 `@zhubai0528/dsh-client-ui-aqua`，仓库迁至 `github.com/ZHUBAI0528/dsh-client-ui-aqua`；插件 id 仍为 `ui-aqua`，localStorage 键（`dsh.ui-aqua.*`）不变，老用户设置原样沿用
+- 许可对齐：`package.json` 由 MIT 更正为 **AGPL-3.0**，与仓库 `LICENSE` 一致（此前自相矛盾）
+- 发布脚本：`prepublishOnly` 改为 `npm run bundle`（本机无全局 pnpm）；`publish.ps1` 改为薄封装，不再重写包名/描述，删除失效的 `build.ps1`
+- 文档：中英双版逐节对齐重写，新增「来源与致谢」「本地开发」「许可」，截图统一为 1380×600
 
 ## v1.3.0
 

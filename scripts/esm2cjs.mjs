@@ -18,7 +18,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const PACKAGE_ID = '@deepseek-ai/dsh-client-ui-aqua';
+const PACKAGE_ID = '@zhubai0528/dsh-client-ui-aqua';
 const clientPath = resolve(process.cwd(), 'lib/client.js');
 
 /** Collect the `name` part of `import { a, b as c } from "spec"`. */

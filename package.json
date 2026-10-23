@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-aqua",
+  "name": "@zhubai0528/dsh-client-ui-aqua",
   "description": "Aqua: a highly customizable glassmorphism theme for the Web surface — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
   "version": "2.0.0",
   "publishConfig": {
@@ -7,8 +7,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WYH66666666/DSH.git"
+    "url": "git+https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git"
   },
+  "homepage": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua#readme",
+  "bugs": {
+    "url": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua/issues"
+  },
+  "author": "ZHUBAI0528",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "theme",
+    "glassmorphism",
+    "blur"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -47,9 +59,9 @@
     "bundle": "tsdown && node scripts/inline-css.mjs && node scripts/esm2cjs.mjs",
     "typecheck": "tsc --noEmit",
     "watch": "tsdown --watch",
-    "prepublishOnly": "pnpm run bundle"
+    "prepublishOnly": "npm run bundle"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-locale": ">=0.1.0-rc.5 <0.3.0",

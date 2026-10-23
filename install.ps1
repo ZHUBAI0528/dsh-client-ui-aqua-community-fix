@@ -1,12 +1,12 @@
 # Aqua installer (Windows) - BACKUP method. The recommended install is the
 # npm one-liner (no account, no git, no manual steps, all platforms):
 #
-#   dsh plugin --profile web add dsh-client-ui-aqua
+#   dsh plugin --profile web add 
 #
 # This script is the GitHub fallback: no npm, no git required.
 #
 # One command (from any directory):
-#   powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/WYH66666666/DSH-Transparent-UI-Plugin/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+#   powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 #
 # It does three things:
 #   1. get the repo (git clone, or plain zip download when git is missing)
@@ -20,7 +20,7 @@
 # one; pass a URL or local path to install another clone.
 
 param(
-    [string]$Source = 'https://github.com/WYH66666666/DSH-Transparent-UI-Plugin',
+    [string]$Source = 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua',
     [string]$Version = 'latest',
     [string]$DshHome = $env:DSH_HOME,
     [string]$Profile = 'web'
@@ -32,7 +32,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $DshHome) { $DshHome = Join-Path $env:USERPROFILE '.dsh' }
 if (-not (Test-Path $DshHome)) { throw "DSH home not found: $DshHome (override with -DshHome)" }
 
-$plugin      = '@deepseek-ai/dsh-client-ui-aqua'
+$plugin      = '@zhubai0528/dsh-client-ui-aqua'
 $nodeModules = Join-Path $DshHome 'profiles\node_modules'
 $linkPath    = Join-Path $nodeModules $plugin
 $patchFile   = Join-Path $DshHome "profiles\$Profile\cordis.patch.yml"
@@ -130,7 +130,7 @@ Write-Host "[3/3] Registering in $patchFile" -ForegroundColor Cyan
 $entryText = @'
 - insert:
     - id: ui-aqua
-      name: '@deepseek-ai/dsh-client-ui-aqua'
+      name: '@zhubai0528/dsh-client-ui-aqua'
 '@
 if (-not (Test-Path $patchFile)) {
     Set-Content -Path $patchFile -Value ($entryText + "`n") -Encoding UTF8
@@ -147,5 +147,5 @@ if (-not (Test-Path $patchFile)) {
 }
 
 Write-Host ''
-Write-Host 'Done. Reload the Web UI (Aqua is on by default; Settings -> Plugins -> Aqua to toggle).' -ForegroundColor Green
+Write-Host 'Done. Reload the Web UI (Aqua is on by default; open the "Glass theme" page in the left sidebar to adjust).' -ForegroundColor Green
 Write-Host 'If the plugin does not appear after reload, restart the dsh web process.' -ForegroundColor Yellow

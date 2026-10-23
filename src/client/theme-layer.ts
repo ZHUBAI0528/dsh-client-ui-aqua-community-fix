@@ -52,7 +52,7 @@ export const AQUA_ENABLED_KEY = 'dsh.ui-aqua.enabled'
 export const DEFAULT_ENABLED = true
 
 /** The layer's identity in the theme override stack (inspection-visible). */
-const OVERRIDE_SOURCE = '@deepseek-ai/dsh-client-ui-aqua'
+const OVERRIDE_SOURCE = '@zhubai0528/dsh-client-ui-aqua'
 
 const FONT_STACK = "'Space Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', "
   + "'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif"
