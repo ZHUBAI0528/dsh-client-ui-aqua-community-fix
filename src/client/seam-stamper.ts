@@ -27,6 +27,10 @@ interface Seam {
 const SEAMS: readonly Seam[] = [
   // The layout frame: the sidebar column's direct parent.
   { attribute: 'data-dsh-frame', selector: ':has(> [class*="sidebarCol"])' },
+  // The main content column: every route (conversation, schedule, plugin
+  // panels) renders inside this one container, so the chat veil + the
+  // page-transparent rules key off it instead of per-route roots.
+  { attribute: 'data-dsh-center', selector: '[class*="centerCol"]', first: true },
   // The sidebar content root (topmost `root` under the column — settings
   // internals also carry a `root` class but sit deeper, so first match wins).
   { attribute: 'data-dsh-sidebar-root', selector: '[class*="sidebarCol"] [class*="root"]', first: true },

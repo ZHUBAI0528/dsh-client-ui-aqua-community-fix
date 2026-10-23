@@ -1,8 +1,5 @@
-/**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-ui-aqua`.
- * @module @deepseek-ai/dsh-client-ui-aqua/invariant
- */
-import type { Context } from '@deepseek-ai/cordis';
+import { Context } from "@deepseek-ai/cordis";
+//#region src/invariant.d.ts
 /** Cordis companion plugin name. */
 export declare const name = "client-ui-aqua-invariant";
 /** Service required before the companion can reserve package ownership. */
@@ -13,4 +10,5 @@ export declare const inject: string[];
  * @returns the installed registration's disposer after setup succeeds.
  */
 export declare const apply: (ctx: Context) => Promise<() => void>;
+//#endregion
 //# sourceMappingURL=invariant.d.ts.map

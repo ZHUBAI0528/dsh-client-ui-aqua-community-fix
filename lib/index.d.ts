@@ -1,3 +1,4 @@
+//#region src/index.d.ts
 /**
  * Aqua theme-layer plugin, node half. Pure UI plugin: the empty apply exists
  * so the plugin appears in the host cordis.yml / Loader; the browser half
@@ -7,4 +8,5 @@
  */
 /** Host plugin body — no host-side behavior for this surface plugin. */
 export declare function apply(): void;
+//#endregion
 //# sourceMappingURL=index.d.ts.map

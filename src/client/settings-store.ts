@@ -1,16 +1,14 @@
 /**
  * Aqua row slot store: a mirror of the layer's state (enable flag plus the
  * knobs and the backdrop source). The plugin's apply-world change listener is
- * the only writer; the row component reads via props.useStore.
+ * the only writer; the panel component reads via props.useStore.
  */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 
 /** Store state mirrored from the Aqua settings scope. */
 export interface AquaRowState {
   /** Persisted layer enable flag. */
   enabled: boolean
-  /** Rendering mode: mica or stock layout with generic glass. */
-  mode: 'mica' | 'compat'
   /** Glass blur radius, px. */
   blur: number
   /** Glass frost amount, 0-100. */
@@ -35,8 +33,12 @@ export interface AquaRowState {
   mesh: boolean
   /** Cursor spotlight glow following the pointer over the glass panes. */
   spotlight: boolean
-  /** Hover press-down for the glass panes. */
-  press: boolean
+  /** Keep a hover-opened submenu open when the same row is clicked. */
+  submenuHold: boolean
+  /** Submenu/popup surface opacity, 0-100. */
+  menuOpacity: number
+  /** Chat surface veil, 0-100 (0 = backdrop untouched, 100 = opaque chat slab). */
+  chatAlpha: number
   /** Wallpaper blur radius, px. */
   wallpaperBlur: number
   /** Wallpaper frost veil, 0-100. */
@@ -52,7 +54,6 @@ export interface AquaRowState {
 /** The full payload the layer pushes into the row store on every change. */
 export interface AquaSettingsPayload {
   enabled: boolean
-  mode: 'mica' | 'compat'
   blur: number
   frost: number
   fluidHue: number
@@ -65,7 +66,9 @@ export interface AquaSettingsPayload {
   critters: boolean
   mesh: boolean
   spotlight: boolean
-  press: boolean
+  submenuHold: boolean
+  menuOpacity: number
+  chatAlpha: number
   wallpaperBlur: number
   wallpaperFrost: number
   videoBlur: number
@@ -78,14 +81,12 @@ type AquaRowActions = {
 }
 
 /**
- * Declares the Aqua row state and write surface.
+ * Declares the Aqua panel state and write surface.
  * @returns the store handle.
  */
-export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowActions> {
-  return defineStore({
+export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowActions> {  return defineStore({
     init: (): AquaRowState => ({
       enabled: true,
-      mode: 'mica',
       blur: 20,
       frost: 7,
       fluidHue: 320,
@@ -98,7 +99,9 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       critters: true,
       mesh: true,
       spotlight: true,
-      press: true,
+      submenuHold: true,
+      menuOpacity: 96,
+      chatAlpha: 25,
       wallpaperBlur: 0,
       wallpaperFrost: 0,
       videoBlur: 6,
@@ -109,7 +112,6 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       sync: (d, next: AquaSettingsPayload, revision: number) => {
         if (revision <= d.revision) return
         d.enabled = next.enabled
-        d.mode = next.mode
         d.blur = next.blur
         d.frost = next.frost
         d.fluidHue = next.fluidHue
@@ -122,7 +124,9 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
         d.critters = next.critters
         d.mesh = next.mesh
         d.spotlight = next.spotlight
-        d.press = next.press
+        d.submenuHold = next.submenuHold
+        d.menuOpacity = next.menuOpacity
+        d.chatAlpha = next.chatAlpha
         d.wallpaperBlur = next.wallpaperBlur
         d.wallpaperFrost = next.wallpaperFrost
         d.videoBlur = next.videoBlur
@@ -131,4 +135,30 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       },
     },
   })
+}
+
+/**
+ * The slot's store declaration, in the official plugin-manager shape: the
+ * declaration spread plus `create` overridden to hand back ONE shared
+ * instance. The host materializes the slot's store through `create()`, so the
+ * panel component, the inject factory, and the apply-world `sync` writer all
+ * observe the same snapshot.
+ */
+const aquaPanelStoreHandle = createAquaRowStore()
+const aquaPanelStoreInstance = aquaPanelStoreHandle.create()
+
+/** The store declaration handed to the slot registration. */
+export const aquaPanelStore = {
+  ...aquaPanelStoreHandle,
+  create: () => aquaPanelStoreInstance,
+}
+
+/**
+ * The baked action face the slot's inject factory receives: the store's
+ * `sync` action with the draft argument already bound (call it as
+ * `sync(next, revision)`).
+ */
+export interface AquaPanelActions {
+  /** Mirror one layer-state payload into the store. */
+  sync: (next: AquaSettingsPayload, revision: number) => void
 }

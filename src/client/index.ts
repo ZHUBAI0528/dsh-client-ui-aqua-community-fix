@@ -1,32 +1,29 @@
 /**
  * Aqua client plugin body: the toggleable glassmorphism skin. Owns the durable
  * enable flag (localStorage), applies/retracts the theme layer through
- * {@link AquaLayer}, and registers two settings surfaces:
- * - the master on/off card into the Plugins section (`settings.plugin.item`,
- *   same shape as the other plugin cards);
- * - every glass knob into the General section's Appearance row area
- *   (`settings.general.item`, right under 外观).
+ * {@link AquaLayer}, and ships its own settings surface in the LEFT SIDEBAR:
+ * - a panel icon (`sidebar.panellist`) that opens the glass panel;
+ * - the panel page itself (`main`, key `aqua`) carrying the master on/off
+ *   switch and every glass knob.
  * One click on the master switch returns the stock UI (every layer is an
  * effect, disposed on flip).
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls the `settings.plugin.item` SlotMap merge.
-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
-// Type-only: pulls the `settings.general.item` SlotMap merge.
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { AquaPluginCard, type AquaPluginCardInjected } from './AquaPluginCard.tsx'
-import { AquaAppearanceRow, type AquaAppearanceRowInjected } from './AquaAppearanceRow.tsx'
-import { createAquaRowStore, type AquaSettingsPayload } from './settings-store.ts'
+import { AquaPanelPage, type AquaPanelPageInjected } from './AquaPanelPage.tsx'
+import { AquaPanelIcon } from './AquaPanelIcon.tsx'
+import { aquaPanelStore, type AquaPanelActions, type AquaSettingsPayload } from './settings-store.ts'
 import { en, NS, zh } from './locales.ts'
 import { AquaLayer } from './theme-layer.ts'
 // Side-effect imports: the theme-layer stylesheet (unloaded with the plugin)
 // and the self-hosted Space Grotesk @font-face (no shell dependency).
-import './aqua.module.css'
-import './fonts.module.css'
+import './aqua.css'
+import './fonts.css'
 
-/** Required services: theme override stack plus the settings-card surfaces. */
+/** Required services: theme override stack plus the sidebar panel surfaces. */
 export const inject = ['theme', 'slots', 'locale']
+
+/** The panel's key in the `main` slot — also the sidebar panel id. */
+const PANEL_ID = 'aqua'
 
 /**
  * Client plugin body.
@@ -34,23 +31,21 @@ export const inject = ['theme', 'slots', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-aqua: settings dictionaries')
+  const t = ctx.locale.bind(NS)
 
   // The layer owns its lifecycle: enable flag, token stack, and CSS attribute
   // are all effects released on disable/dispose.
   const layer = new AquaLayer(ctx)
 
-  // Two store mirrors of the same layer state: one for the Plugins card
-  // (master switch) and one for the General section's Appearance row (knobs).
-  const pluginStore = createAquaRowStore()
-  const appearanceStore = createAquaRowStore()
-  let pluginBound: BoundActions<typeof pluginStore> | undefined
-  let appearanceBound: BoundActions<typeof appearanceStore> | undefined
+  // One store mirror of the layer state, shared by the panel page (master
+  // switch + every knob). The mirror is the store declaration exported from
+  // settings-store; its `sync` action is what the slot's inject factory binds.
+  let panelBound: AquaPanelActions | undefined
   let revision = 0
   const payload = (): AquaSettingsPayload => {
     const s = layer.getSettings()
     return {
       enabled: layer.getEnabled(),
-      mode: s.mode,
       blur: s.blur,
       frost: s.frost,
       fluidHue: s.fluidHue,
@@ -63,7 +58,9 @@ export function apply(ctx: ClientContext): void {
       critters: s.critters,
       mesh: s.mesh,
       spotlight: s.spotlight,
-      press: s.press,
+      submenuHold: s.submenuHold,
+      menuOpacity: s.menuOpacity,
+      chatAlpha: s.chatAlpha,
       wallpaperBlur: s.wallpaperBlur,
       wallpaperFrost: s.wallpaperFrost,
       videoBlur: s.videoBlur,
@@ -72,32 +69,21 @@ export function apply(ctx: ClientContext): void {
   }
   const sync = (): void => {
     const next = payload()
-    pluginBound?.sync(next, revision)
-    appearanceBound?.sync(next, revision)
+    panelBound?.sync(next, revision)
     revision += 1
   }
   // The Appearance switch flips the brightness knob's half-range; re-sync
-  // both stores so the row re-renders with the new range.
+  // the store so the panel re-renders with the new range.
   ctx.effect(() => ctx.on('theme/change', () => { sync() }), 'ui-aqua: appearance scheme sync')
 
-  const pluginInjected = (actions: BoundActions<typeof pluginStore>): AquaPluginCardInjected => {
-    pluginBound = actions
+  const panelInjected = (actions: AquaPanelActions): AquaPanelPageInjected => {
+    panelBound = actions
     // Re-sync from the layer so no flip is lost between registration and
     // first render (the store's revision guard drops stale duplicates).
     sync()
     return {
       setEnabled: (enabled) => {
         layer.setEnabled(enabled)
-        sync()
-      },
-    }
-  }
-  const appearanceInjected = (actions: BoundActions<typeof appearanceStore>): AquaAppearanceRowInjected => {
-    appearanceBound = actions
-    sync()
-    return {
-      setMode: (mode) => {
-        layer.setMode(mode)
         sync()
       },
       setBlur: (blur) => {
@@ -144,8 +130,16 @@ export function apply(ctx: ClientContext): void {
         layer.setSpotlight(spotlight)
         sync()
       },
-      setPress: (press) => {
-        layer.setPress(press)
+      setSubmenuHold: (submenuHold) => {
+        layer.setSubmenuHold(submenuHold)
+        sync()
+      },
+      setMenuOpacity: (menuOpacity) => {
+        layer.setMenuOpacity(menuOpacity)
+        sync()
+      },
+      setChatAlpha: (chatAlpha) => {
+        layer.setChatAlpha(chatAlpha)
         sync()
       },
       setWallpaperBlur: (wallpaperBlur) => {
@@ -170,23 +164,22 @@ export function apply(ctx: ClientContext): void {
     }
   }
 
-  // Master switch card in the Plugins configurable tab.
-  ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
-    name: 'settings.plugin.item',
-    id: 'aqua',
-    order: 5,
-    store: pluginStore,
+  // The glass panel lives in the LEFT SIDEBAR: a panel icon in the panel
+  // list, and the panel page itself in the `main` slot under the same key.
+  // Clicking the icon swaps the main column to the glass controls.
+  ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+    name: 'sidebar.panellist',
+    id: PANEL_ID,
+    order: 20,
     locale: NS,
-    inject: pluginInjected,
-  }, AquaPluginCard))
+    label: () => t('tab'),
+  }, AquaPanelIcon))
 
-  // Glass knobs row in the General section, directly under Appearance (10).
-  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
-    name: 'settings.general.item',
-    id: 'aqua',
-    order: 11,
-    store: appearanceStore,
+  ctx.slots.inject('main', () => ctx.slots.register({
+    name: 'main',
+    key: PANEL_ID,
+    store: aquaPanelStore,
     locale: NS,
-    inject: appearanceInjected,
-  }, AquaAppearanceRow))
+    inject: panelInjected,
+  }, AquaPanelPage))
 }

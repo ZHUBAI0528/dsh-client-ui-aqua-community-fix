@@ -19,12 +19,31 @@ import { fluidToneColors, HUE_BASE } from './fluid-tones.ts'
 import { deleteVideoBlob, loadVideoBlob, loadVideoHandle } from './wallpaper-store.ts'
 import { attachFluidInteractions } from './fluid-interactions.ts'
 import { startSeamStamper } from './seam-stamper.ts'
+import { startSubmenuHold } from './submenu-hold.ts'
 import { mountWhale, type WhaleHandle } from './whale.ts'
 import { mountMesh, type MeshHandle } from './mesh.ts'
-import { startSpotlight, SPOTLIGHT_ATTRIBUTE, PRESS_ATTRIBUTE } from './spotlight.ts'
+import { startSpotlight, SPOTLIGHT_ATTRIBUTE } from './spotlight.ts'
 
 /** html attribute selecting the Aqua layer: CSS hooks and ambient effects. */
 export const AQUA_ATTRIBUTE = 'data-dsh-aqua'
+
+/**
+ * The layer instance that currently owns the DOM gate attributes.
+ *
+ * A cold boot can compose this plugin more than once (the host re-composes its
+ * fiber while the splash is still up). Each instance mounts, and the *older*
+ * instance's cleanup may run after the newer one already mounted — and that
+ * cleanup used to strip `data-dsh-aqua` / `data-dsh-float` wholesale. The
+ * whole stylesheet is gated on those attributes, so the surviving layer kept
+ * its settings (the panel still worked) while every rule it owns went inert:
+ * the page roots painted their stock opaque fill (an all-white conversation
+ * area) and the 会话区不透明度 knob did nothing. Only the owner may release
+ * the DOM.
+ */
+let domOwner: AquaLayer | undefined
+
+/** How many times a failed fluid-canvas attach is retried before giving up. */
+const FLUID_RETRY_LIMIT = 8
 
 /** localStorage key carrying the layer enable flag. */
 export const AQUA_ENABLED_KEY = 'dsh.ui-aqua.enabled'
@@ -162,38 +181,6 @@ export const AQUA_TOKEN_OVERRIDES: ThemeTokenOverrides = {
   },
 }
 
-/**
- * Compatibility-mode token set: the same palette as the floating mode, but
- * every surface token turns translucent, so the fluid/wallpaper backdrop
- * shows through the STOCK layout. This is what makes the material generic —
- * any plugin that consumes the shared design tokens gets the glass for free.
- */
-const COMPAT_SURFACE_OVERRIDES: ThemeTokenOverrides = {
-  '--dsw-alias-bg-layer-1': { light: 'rgba(255, 255, 255, 0.55)', dark: 'rgba(17, 26, 39, 0.55)' },
-  '--dsw-alias-bg-layer-2': { light: 'rgba(236, 242, 250, 0.5)', dark: 'rgba(22, 33, 48, 0.55)' },
-  '--dsw-alias-bg-layer-3': { light: 'rgba(226, 235, 247, 0.45)', dark: 'rgba(28, 42, 61, 0.5)' },
-  '--dsw-alias-bg-overlay': { light: 'rgba(220, 231, 244, 0.6)', dark: 'rgba(34, 51, 74, 0.6)' },
-  '--dsw-alias-bg-module-platform': { light: 'rgba(255, 255, 255, 0.55)', dark: 'rgba(17, 26, 39, 0.55)' },
-  '--dsw-alias-bg-multi-select': { light: 'rgba(255, 255, 255, 0.55)', dark: 'rgba(22, 33, 48, 0.55)' },
-  '--dsw-specific-menu': { light: 'rgba(234, 241, 249, 0.6)', dark: 'rgba(22, 33, 48, 0.6)' },
-  '--dsw-specific-selector': { light: 'rgba(234, 241, 249, 0.55)', dark: 'rgba(28, 42, 61, 0.55)' },
-  '--dsw-specific-bubble': { light: 'rgba(240, 245, 252, 0.55)', dark: 'rgba(18, 28, 42, 0.55)' },
-  '--dsw-specific-bubble-highlight': { light: 'rgba(220, 233, 251, 0.55)', dark: 'rgba(26, 40, 58, 0.55)' },
-  '--dsw-specific-tip': { light: 'rgba(234, 241, 249, 0.6)', dark: 'rgba(19, 29, 43, 0.6)' },
-  '--dsw-specific-input-major': { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(16, 25, 39, 0.5)' },
-  '--dsw-specific-login-input': { light: 'rgba(240, 245, 251, 0.5)', dark: 'rgba(13, 20, 31, 0.5)' },
-  '--dsw-alias-markdown-code-block': { light: 'rgba(240, 245, 251, 0.5)', dark: 'rgba(13, 20, 31, 0.5)' },
-  '--dsw-alias-markdown-code-block-banner': { light: 'rgba(245, 248, 253, 0.55)', dark: 'rgba(18, 27, 41, 0.55)' },
-  '--dsw-alias-markdown-inline-code': { light: 'rgba(228, 237, 248, 0.5)', dark: 'rgba(23, 35, 52, 0.5)' },
-  '--dsw-alias-markdown-citation': { light: 'rgba(234, 241, 249, 0.55)', dark: 'rgba(26, 37, 52, 0.55)' },
-  '--dsw-alias-markdown-tag': { light: 'rgba(228, 237, 248, 0.5)', dark: 'rgba(22, 33, 48, 0.5)' },
-  '--dsw-alias-markdown-placeholder': { light: 'rgba(234, 241, 249, 0.55)', dark: 'rgba(19, 29, 43, 0.55)' },
-  '--dsw-alias-toast-bg': { light: 'rgba(27, 50, 86, 0.85)', dark: 'rgba(28, 42, 61, 0.85)' },
-  '--dsw-alias-tooltip-bg': { light: 'rgba(19, 36, 62, 0.88)', dark: 'rgba(22, 33, 48, 0.88)' },
-}
-
-/** Compatibility token layer: the palette plus the translucent surfaces. */
-const COMPAT_TOKEN_OVERRIDES: ThemeTokenOverrides = { ...AQUA_TOKEN_OVERRIDES, ...COMPAT_SURFACE_OVERRIDES }
 
 /** Read the persisted enable flag (absent storage means on). */
 function readEnabled(): boolean {
@@ -216,8 +203,6 @@ function writeEnabled(value: boolean): void {
 
 /** Tunable layer knobs, persisted independently of the enable flag. */
 export interface AquaSettings {
-  /** Rendering mode: mica (frosted floating cards) or the stock layout with a generic glass material. */
-  mode: 'mica' | 'compat'
   /** Glass backdrop blur radius, px. */
   blur: number
   /** Glass fill opacity, 0-100 (50 = the shipped look; drives the frost multiplier). */
@@ -240,8 +225,12 @@ export interface AquaSettings {
   mesh: boolean
   /** Cursor spotlight glow that follows the pointer over the glass panes. */
   spotlight: boolean
-  /** Hover press-down: the pane under the cursor sinks a touch (tactile depth). */
-  press: boolean
+  /** Keep a hover-opened submenu open when the same row is clicked. */
+  submenuHold: boolean
+  /** Submenu/popup surface opacity, 0-100 (0 = clear glass, 100 = solid). */
+  menuOpacity: number
+  /** Chat surface veil, 0-100 (0 = the backdrop shows untouched, 100 = an opaque chat slab). */
+  chatAlpha: number
   /** Wallpaper blur radius, px. */
   wallpaperBlur: number
   /** Wallpaper frost veil, 0-100. */
@@ -254,7 +243,6 @@ export interface AquaSettings {
 
 /** Shipped defaults — what a first-time install sees (the tuned look). */
 const SETTINGS_DEFAULTS: AquaSettings = {
-  mode: 'mica',
   blur: 20,
   frost: 7,
   bgBrightness: 50,
@@ -264,7 +252,9 @@ const SETTINGS_DEFAULTS: AquaSettings = {
   critters: true,
   mesh: true,
   spotlight: true,
-  press: true,
+  submenuHold: true,
+  menuOpacity: 96,
+  chatAlpha: 25,
   fluidHue: 320,
   fluidDepth: 25,
   wallpaperBlur: 0,
@@ -280,6 +270,8 @@ const NUMERIC_KEYS = {
   fluidHue: 'dsh.ui-aqua.fluidHue',
   fluidDepth: 'dsh.ui-aqua.fluidDepth',
   bgBrightness: 'dsh.ui-aqua.bgBrightness',
+  chatAlpha: 'dsh.ui-aqua.chatAlpha',
+  menuOpacity: 'dsh.ui-aqua.menuOpacity',
   wallpaperBlur: 'dsh.ui-aqua.wallpaperBlur',
   wallpaperFrost: 'dsh.ui-aqua.wallpaperFrost',
   videoBlur: 'dsh.ui-aqua.videoBlur',
@@ -287,19 +279,18 @@ const NUMERIC_KEYS = {
 } as const
 type NumericKey = keyof typeof NUMERIC_KEYS
 
-const MODE_KEY = 'dsh.ui-aqua.mode'
 const BACKGROUND_KEY = 'dsh.ui-aqua.background'
 const WALLPAPER_KEY = 'dsh.ui-aqua.wallpaper'
 const WHALE_KEY = 'dsh.ui-aqua.whale'
 const CRITTERS_KEY = 'dsh.ui-aqua.critters'
 const MESH_KEY = 'dsh.ui-aqua.mesh'
 const SPOTLIGHT_KEY = 'dsh.ui-aqua.spotlight'
-const PRESS_KEY = 'dsh.ui-aqua.press'
+const SUBMENU_HOLD_KEY = 'dsh.ui-aqua.submenuHold'
 
 /** Clamp a numeric knob into its sane range. */
 function clampSetting(key: NumericKey, value: number): number {
   const max = key === 'blur' || key === 'wallpaperBlur' || key === 'videoBlur' ? 40
-    : key === 'frost' || key === 'wallpaperFrost' || key === 'bgBrightness' || key === 'videoBrightness' ? 100
+    : key === 'frost' || key === 'wallpaperFrost' || key === 'bgBrightness' || key === 'videoBrightness' || key === 'chatAlpha' || key === 'menuOpacity' ? 100
       : 360
   return Number.isFinite(value) ? Math.min(max, Math.max(0, value)) : SETTINGS_DEFAULTS[key]
 }
@@ -336,27 +327,6 @@ function readBackground(): 'fluid' | 'wallpaper' {
 function writeBackground(value: 'fluid' | 'wallpaper'): void {
   try {
     localStorage.setItem(BACKGROUND_KEY, value)
-  } catch {
-    /* in-memory state still applies */
-  }
-}
-
-/** Read the rendering mode ('mica' or 'compat'; legacy 'float'/'liquid'
- *  values migrate to 'mica'). */
-function readMode(): 'mica' | 'compat' {
-  try {
-    const stored = localStorage.getItem(MODE_KEY)
-    if (stored === 'compat') return 'compat'
-    return 'mica'
-  } catch {
-    return 'mica'
-  }
-}
-
-/** Persist the rendering mode. */
-function writeMode(value: 'mica' | 'compat'): void {
-  try {
-    localStorage.setItem(MODE_KEY, value)
   } catch {
     /* in-memory state still applies */
   }
@@ -456,23 +426,20 @@ function writeSpotlight(value: boolean): void {
   }
 }
 
-/** Read the hover-press flag (absent means on). */
-function readPress(): boolean {
+/** Read the submenu click-hold flag (absent means on). */
+function readSubmenuHold(): boolean {
   try {
-    // One-shot migration: the entrance-rise key from the earlier iteration
-    // never shipped — drop it so no stale preference lingers.
-    localStorage.removeItem('dsh.ui-aqua.entrance')
-    const raw = localStorage.getItem(PRESS_KEY)
+    const raw = localStorage.getItem(SUBMENU_HOLD_KEY)
     return raw === null ? true : raw === 'true'
   } catch {
     return true
   }
 }
 
-/** Persist the hover-press flag. */
-function writePress(value: boolean): void {
+/** Persist the submenu click-hold flag. */
+function writeSubmenuHold(value: boolean): void {
   try {
-    localStorage.setItem(PRESS_KEY, String(value))
+    localStorage.setItem(SUBMENU_HOLD_KEY, String(value))
   } catch {
     /* in-memory state still applies for this tab */
   }
@@ -499,6 +466,12 @@ export class AquaLayer {
   private interactionDisposer: (() => void) | undefined
   private themeListener: (() => void) | undefined
   private seamDisposer: (() => void) | undefined
+  private submenuHoldDisposer: (() => void) | undefined
+  private attributeGuard: MutationObserver | undefined
+  private schemeObserver: MutationObserver | undefined
+  private fluidRetryTimer: number | undefined
+  private fluidRetries = 0
+  private lateApplyTimers: number[] = []
   private spotlightDisposer: (() => void) | undefined
   private whaleHandle: WhaleHandle | undefined
   private meshHandle: MeshHandle | undefined
@@ -520,7 +493,7 @@ export class AquaLayer {
           this.sync()
         }
         const key = event.key
-        if (key !== null && (key in NUMERIC_KEYS || key === BACKGROUND_KEY || key === WALLPAPER_KEY || key === MODE_KEY || key === WHALE_KEY || key === CRITTERS_KEY || key === MESH_KEY || key === SPOTLIGHT_KEY || key === PRESS_KEY)) {
+        if (key !== null && (key in NUMERIC_KEYS || key === BACKGROUND_KEY || key === WALLPAPER_KEY || key === WHALE_KEY || key === CRITTERS_KEY || key === MESH_KEY || key === SPOTLIGHT_KEY)) {
           this.reloadSettings()
           if (this.enabled) { this.applySettings(); this.applyTokens(); this.applyFluidPalettes(); this.syncWhale() }
         }
@@ -541,6 +514,7 @@ export class AquaLayer {
         window.removeEventListener('storage', onStorage)
         this.themeListener?.()
         this.themeListener = undefined
+        this.dispose()
         this.unmount()
       }
     }, 'ui-aqua: layer lifecycle')
@@ -548,6 +522,9 @@ export class AquaLayer {
     this.reloadSettings()
     this.dark = this.resolveScheme()
     this.sync()
+    // Interaction shim: independent of the visual flip — turning the glass
+    // theme off must not change how submenus answer a click.
+    this.syncSubmenuHold()
   }
 
   /** Current enable state (the settings row mirrors this). */
@@ -565,8 +542,24 @@ export class AquaLayer {
     return this.dark
   }
 
-  /** Resolved scheme from the theme service (falls back to the body attribute). */
+  /**
+   * Whether the resolved palette is dark.
+   *
+   * The stylesheet splits every scheme-sensitive surface on
+   * `body[data-ds-dark-theme]`, so that attribute — not the theme service — is
+   * the authority here. Asking the service first used to be fine on a warm
+   * page, but a cold boot can mount this layer before the service has resolved
+   * the stored preference: it then answered "dark" while the document was
+   * light, and applySettings wrote `--dsh-aqua-chat-white: 0` for a light
+   * page. The light veil therefore resolved to transparent, exposing the
+   * opaque page fill (an all-white conversation area) and making the
+   * 会话区不透明度 knob inert — while dark mode, which reads the other
+   * variable, kept working. The service is still consulted, but only as a
+   * fallback when the document carries no signal at all.
+   */
   private resolveScheme(): boolean {
+    if (typeof document !== 'undefined' && document.body.hasAttribute('data-ds-dark-theme')) return true
+    if (typeof document !== 'undefined' && document.body.isConnected) return false
     try {
       return this.ctx.theme.getTheme().active.colorScheme === 'dark'
     } catch {
@@ -581,23 +574,28 @@ export class AquaLayer {
       localStorage.removeItem('dsh.ui-aqua.tilt')
       localStorage.removeItem('dsh.ui-aqua.lens')
       localStorage.removeItem('dsh.ui-aqua.fluidTone')
+      // The hover-press tilt shipped and was withdrawn: any stored flag is
+      // obsolete (the effect re-rasterizes glass panes and blurs text).
+      localStorage.removeItem('dsh.ui-aqua.press')
+      localStorage.removeItem('dsh.ui-aqua.entrance')
     } catch {
       /* ignore */
     }
     this.settings = {
-      mode: readMode(),
       blur: readSetting('blur'),
       frost: readSetting('frost'),
       fluidHue: readSetting('fluidHue'),
       fluidDepth: readSetting('fluidDepth'),
       bgBrightness: readSetting('bgBrightness'),
+      chatAlpha: readSetting('chatAlpha'),
       background: readBackground(),
       wallpaper: readWallpaper(),
       whale: readWhale(),
       critters: readCritters(),
       mesh: readMesh(),
       spotlight: readSpotlight(),
-      press: readPress(),
+      submenuHold: readSubmenuHold(),
+      menuOpacity: readSetting('menuOpacity'),
       wallpaperBlur: readSetting('wallpaperBlur'),
       wallpaperFrost: readSetting('wallpaperFrost'),
       videoBlur: readSetting('videoBlur'),
@@ -611,14 +609,6 @@ export class AquaLayer {
     this.enabled = value
     writeEnabled(value)
     this.sync()
-  }
-
-  /** Set the rendering mode ('mica' or 'compat'). */
-  setMode(value: 'mica' | 'compat'): void {
-    if (value === this.settings.mode) return
-    this.settings.mode = value
-    writeMode(value)
-    if (this.enabled) { this.applySettings(); this.applyTokens() }
   }
 
   /** Set the glass blur radius (px). */
@@ -726,11 +716,30 @@ export class AquaLayer {
     if (this.enabled) this.applySettings()
   }
 
-  /** Set the hover-press flag (pane sinks a touch under the cursor). */
-  setPress(value: boolean): void {
-    if (value === this.settings.press) return
-    this.settings.press = value
-    writePress(value)
+  /** Set the submenu surface opacity (0-100). */
+  setMenuOpacity(value: number): void {
+    const next = clampSetting('menuOpacity', value)
+    if (next === this.settings.menuOpacity) return
+    this.settings.menuOpacity = next
+    writeSetting('menuOpacity', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the submenu click-hold flag (hover-opened submenus survive a click). */
+  setSubmenuHold(value: boolean): void {
+    if (value === this.settings.submenuHold) return
+    this.settings.submenuHold = value
+    writeSubmenuHold(value)
+    this.syncSubmenuHold()
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the chat surface veil (0-100: 0 = backdrop untouched, 100 = opaque chat slab). */
+  setChatAlpha(value: number): void {
+    const next = clampSetting('chatAlpha', value)
+    if (next === this.settings.chatAlpha) return
+    this.settings.chatAlpha = next
+    writeSetting('chatAlpha', next)
     if (this.enabled) this.applySettings()
   }
 
@@ -816,17 +825,29 @@ export class AquaLayer {
     const dark = this.dark
     style.setProperty('--dsh-aqua-brightness-black', String(dark ? Math.max(0, (50 - this.settings.bgBrightness) / 50) : 0))
     style.setProperty('--dsh-aqua-brightness-white', String(dark ? 0 : Math.max(0, (this.settings.bgBrightness - 50) / 50)))
+    // Chat surface veil: one knob, scheme-split the same way — light mode
+    // lays a white glass sheet over the conversation column, dark mode a
+    // neutral dark one. 0 = the backdrop shows untouched.
+    // Both variables carry the SAME alpha on purpose: the stylesheet already
+    // picks white vs dark fill by scheme, so the value must not be zeroed by
+    // our own scheme belief — a disagreement between this layer and the
+    // document would silently kill the veil in one of the two modes.
+    const chatVeil = String(this.settings.chatAlpha / 100)
+    style.setProperty('--dsh-aqua-chat-black', chatVeil)
+    style.setProperty('--dsh-aqua-chat-white', chatVeil)
+    // Popup surfaces have their own opacity knob: they float over dense text,
+    // so they must be able to go near-solid independently of the card frost.
+    style.setProperty('--dsh-aqua-menu-opacity', String(this.settings.menuOpacity))
 
-    // Rendering mode: the float rules key off data-dsh-float; the compat
-    // (generic glass) rules key off data-dsh-compat.
-    const compat = this.settings.mode === 'compat'
-    document.documentElement.toggleAttribute('data-dsh-float', !compat)
-    document.documentElement.toggleAttribute('data-dsh-compat', compat)
 
-    // Cursor spotlight and hover press ride the floating glass only —
-    // compat keeps the stock layout, so neither effect applies there.
-    document.documentElement.toggleAttribute(SPOTLIGHT_ATTRIBUTE, !compat && this.settings.spotlight)
-    document.documentElement.toggleAttribute(PRESS_ATTRIBUTE, !compat && this.settings.press)
+    // The float layout is the only rendering mode: every layout rule in the
+    // stylesheet keys off data-dsh-float, so it is always present.
+    document.documentElement.setAttribute('data-dsh-float', '')
+
+    document.documentElement.toggleAttribute(SPOTLIGHT_ATTRIBUTE, this.settings.spotlight)
+
+    // Interaction shim, not a style.
+    this.syncSubmenuHold()
 
     // Backdrop source: flip the ambient container between fluid and wallpaper.
     const ambient = document.querySelector<HTMLElement>('[data-dsh-aqua-ambient]')
@@ -931,17 +952,18 @@ export class AquaLayer {
     })
   }
 
-  /** Apply the mode's token layer (floating palette, or translucent compat). */
+  /** Apply the deep-sea token layer. */
   private applyTokens(): void {
     this.tokenDisposer?.()
-    this.tokenDisposer = this.ctx.theme.overrideTokens(
-      OVERRIDE_SOURCE,
-      this.settings.mode === 'compat' ? COMPAT_TOKEN_OVERRIDES : AQUA_TOKEN_OVERRIDES,
-    )
+    this.tokenDisposer = this.ctx.theme.overrideTokens(OVERRIDE_SOURCE, AQUA_TOKEN_OVERRIDES)
   }
 
   private mount(): void {
+    domOwner = this
     document.documentElement.setAttribute(AQUA_ATTRIBUTE, '')
+    this.guardGateAttributes()
+    this.watchScheme()
+    this.scheduleLateApply()
     ensureAmbientScene()
     ensurePageFades()
     this.applySettings()
@@ -951,6 +973,77 @@ export class AquaLayer {
     this.startSpotlightFeed()
     this.syncWhale()
     this.syncMesh()
+  }
+
+  /**
+   * Keep the stylesheet's gate attributes present while enabled.
+   *
+   * Everything the theme draws hangs off `data-dsh-aqua` (and the float layout
+   * off `data-dsh-float`), so a single stray removal — a re-composition, a
+   * third-party script rewriting <html>, an older fiber's cleanup — silently
+   * turns the whole layer into dead CSS while the settings panel still works.
+   * Re-asserting on mutation makes that state impossible to hold.
+   */
+  private guardGateAttributes(): void {
+    this.attributeGuard?.disconnect()
+    const html = document.documentElement
+    const assert = (): void => {
+      if (!this.enabled || domOwner !== this) return
+      if (!html.hasAttribute(AQUA_ATTRIBUTE)) html.setAttribute(AQUA_ATTRIBUTE, '')
+      if (!html.hasAttribute('data-dsh-float')) html.setAttribute('data-dsh-float', '')
+    }
+    assert()
+    const observer = new MutationObserver(assert)
+    observer.observe(html, { attributes: true, attributeFilter: [AQUA_ATTRIBUTE, 'data-dsh-float'] })
+    this.attributeGuard = observer
+  }
+
+  /**
+   * Follow the resolved scheme by watching the attribute the stylesheet uses.
+   *
+   * `theme/change` is the host's event, but it is not a reliable trigger for
+   * this layer: it can fire before `body[data-ds-dark-theme]` is written, or
+   * not fire at all for an Appearance flip. When that happens `this.dark` keeps
+   * its previous value, and everything derived from it — the fluid palette, the
+   * cursor-glow tone, the background-brightness overlay's direction — stays in
+   * the old scheme while the rest of the UI turns dark. The backdrop then reads
+   * as a washed-out light sheet under dark chrome, which is why switching to
+   * dark looked like it "didn't follow" until some knob was touched. Observing
+   * the attribute makes the layer track the DOM, which is also what
+   * `resolveScheme()` trusts.
+   */
+  private watchScheme(): void {
+    this.schemeObserver?.disconnect()
+    const body = document.body
+    if (body === null) return
+    const observer = new MutationObserver(() => {
+      const next = this.resolveScheme()
+      if (next === this.dark) return
+      this.dark = next
+      this.whaleHandle?.setDark(next)
+      if (!this.enabled || domOwner !== this) return
+      this.applySettings()
+      this.applyFluidPalettes()
+    })
+    observer.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+    this.schemeObserver = observer
+  }
+
+  /**
+   * Re-apply once more shortly after mount. On a cold boot the theme presenter
+   * may still be installing tokens when this layer first writes its variables;
+   * a second pass after the frame has settled guarantees the knobs' variables
+   * survive that ordering instead of depending on who ran last.
+   */
+  private scheduleLateApply(): void {
+    for (const id of this.lateApplyTimers) window.clearTimeout(id)
+    this.lateApplyTimers = [300, 1200, 3000].map((delay) => window.setTimeout(() => {
+      // The host can apply body[data-ds-dark-theme] AFTER this layer mounts,
+      // so re-read the scheme on every late pass: scheme-sensitive variables
+      // (the brightness overlay's direction) must not stay on a stale belief.
+      this.dark = this.resolveScheme()
+      if (this.enabled && domOwner === this) this.applySettings()
+    }, delay))
   }
 
   /** Mount or drop the particle whale to match enabled + the whale flag. */
@@ -980,13 +1073,22 @@ export class AquaLayer {
   }
 
   private unmount(): void {
+    this.attributeGuard?.disconnect()
+    this.attributeGuard = undefined
+    this.schemeObserver?.disconnect()
+    this.schemeObserver = undefined
+    for (const id of this.lateApplyTimers) window.clearTimeout(id)
+    this.lateApplyTimers = []
+    if (this.fluidRetryTimer !== undefined) window.clearTimeout(this.fluidRetryTimer)
+    this.fluidRetryTimer = undefined
+    // A stale instance must not tear down a newer layer's DOM (see domOwner).
+    if (domOwner !== undefined && domOwner !== this) return
+    domOwner = undefined
     document.documentElement.removeAttribute(AQUA_ATTRIBUTE)
     document.documentElement.removeAttribute('data-dsh-float')
-    document.documentElement.removeAttribute('data-dsh-compat')
     document.documentElement.removeAttribute('data-dsh-aqua-wallpaper')
     document.documentElement.removeAttribute('data-dsh-aqua-media')
     document.documentElement.removeAttribute(SPOTLIGHT_ATTRIBUTE)
-    document.documentElement.removeAttribute(PRESS_ATTRIBUTE)
     this.spotlightDisposer?.()
     this.spotlightDisposer = undefined
     this.whaleHandle?.dispose()
@@ -1009,13 +1111,21 @@ export class AquaLayer {
 
   /** Attach the fluid shader and the interaction feeds. */
   private mountFluid(): void {
+    if (this.mainFluid !== undefined) return
     const mainCanvas = document.querySelector<HTMLCanvasElement>('[data-dsh-aqua-fluid-canvas]')
+    if (mainCanvas === null) {
+      // The ambient scene is injected by this plugin, but it lives in the app
+      // shell: on a cold boot the mount can run before the shell's node lands.
+      this.scheduleFluidRetry()
+      return
+    }
     try {
-      if (mainCanvas !== null) this.mainFluid = attachFluidShader(mainCanvas, this.fluidParams())
+      this.mainFluid = attachFluidShader(mainCanvas, this.fluidParams())
+      this.fluidRetries = 0
       // Palette follows the Appearance switch via the layer-lifecycle
       // `theme/change` listener (which also refreshes the brightness overlay).
       this.applyFluidPalettes()
-      if (this.mainFluid !== undefined && mainCanvas !== null) {
+      if (this.mainFluid !== undefined) {
         this.interactionDisposer = attachFluidInteractions({
           main: this.mainFluid,
           mainCanvas,
@@ -1024,8 +1134,27 @@ export class AquaLayer {
     } catch {
       // A GPU / driver failure must never take the glass theme down with it:
       // the ambient CSS wash still paints, only the WebGL water is skipped.
+      // It is usually TRANSIENT though — a cold start can reach this line while
+      // the GPU process is still warming up — and giving up permanently left
+      // the backdrop as the flat CSS wash for the whole session. In light mode
+      // that wash over a white base reads as an all-white page (and makes the
+      // white 会话区不透明度 veil look inert), while dark mode keeps its
+      // contrast and looks normal. Retry with backoff instead of surrendering.
       this.mainFluid = undefined
+      this.scheduleFluidRetry()
     }
+  }
+
+  /** Retry a failed/skipped fluid attach with backoff (bounded). */
+  private scheduleFluidRetry(): void {
+    if (this.fluidRetryTimer !== undefined || this.fluidRetries >= FLUID_RETRY_LIMIT) return
+    this.fluidRetries += 1
+    const delay = Math.min(2000, 250 * 2 ** (this.fluidRetries - 1))
+    this.fluidRetryTimer = window.setTimeout(() => {
+      this.fluidRetryTimer = undefined
+      if (!this.enabled || domOwner !== this) return
+      this.mountFluid()
+    }, delay)
   }
 
   private teardownFluid(): void {
@@ -1049,6 +1178,23 @@ export class AquaLayer {
   private startSeamStamper(): void {
     if (this.seamDisposer !== undefined) return
     this.seamDisposer = startSeamStamper()
+  }
+
+  /** Release the interaction shims. Plugin disposal only — the visual flip
+   *  (setEnabled -> unmount) deliberately leaves them running. */
+  dispose(): void {
+    this.submenuHoldDisposer?.()
+    this.submenuHoldDisposer = undefined
+  }
+
+  /** Attach or drop the submenu click-hold shim (idempotent). */
+  private syncSubmenuHold(): void {
+    if (this.settings.submenuHold) {
+      if (this.submenuHoldDisposer === undefined) this.submenuHoldDisposer = startSubmenuHold()
+      return
+    }
+    this.submenuHoldDisposer?.()
+    this.submenuHoldDisposer = undefined
   }
 
   /** Attach the cursor-spotlight pointer feeds (idempotent per mount). */

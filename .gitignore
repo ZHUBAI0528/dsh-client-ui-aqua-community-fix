@@ -4,3 +4,4 @@ lib/tsconfig.tsbuildinfo
 lib/types/**/*.js
 lib/types/**/*.js.map
 lib/types/**/*.d.ts.map
+package-lock.json

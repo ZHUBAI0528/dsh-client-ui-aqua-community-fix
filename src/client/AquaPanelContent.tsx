@@ -1,28 +1,38 @@
 /**
- * Aqua row registered into the General settings section
- * (`settings.general.item`, right under Appearance): every glass knob — mode
- * (mica / compatibility), blur/frost (mica mode only), fluid color,
- * background brightness, the backdrop source picker, and the wallpaper
- * picker with its two knobs. Every
- * write goes straight through to the layer, so the skin moves live. The
- * controls follow the Appearance cubes directly (no row title of their own),
- * and the whole row renders nothing while the master switch in the Plugins
- * section is off.
+ * Aqua glass-theme control body, shared by the sidebar panel page.
+ *
+ * The master switch lives in the panel header (see AquaPanelPage); this
+ * component owns only the knobs — blur and frost,
+ * fluid color, backdrop source, wallpaper picker, and the ambient decorations.
+ * Every write goes straight through to the layer, so the skin moves live.
  */
 import { useRef } from 'react'
-import { IconCheckOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls the `settings.general.item` SlotMap merge.
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { IconCheckOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { fileToDataUrl, Knob, Segmented } from './AquaControls.tsx'
 import { loadVideoHandle, saveVideoBlob, saveVideoHandle } from './wallpaper-store.ts'
-import type { createAquaRowStore } from './settings-store.ts'
+import type { AquaRowState } from './settings-store.ts'
+import type { AquaLocaleKey } from './locales.ts'
 import css from './AquaAppearanceRow.module.css'
 
+/** Detect if running in Electron renderer. */
+function isElectron(): boolean {
+  // Check for Electron's process.versions.electron (available when nodeIntegration or contextIsolation with preload exposes it)
+  try {
+    // @ts-expect-error - process may not exist in browser
+    return typeof process !== 'undefined' && !!process.versions?.electron
+  } catch {
+    return false
+  }
+}
+
+/** Check if File System Access API is truly available (not just polyfilled). */
+function hasNativeFileSystemAccess(): boolean {
+  if (isElectron()) return false
+  return typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function'
+}
+
 /** Injected business face: every knob write except the master switch. */
-export interface AquaAppearanceRowInjected {
-  /** Set the rendering mode. */
-  setMode: (value: 'mica' | 'compat') => void
+export interface AquaPanelContentInjected {
   /** Set the glass blur radius, px. */
   setBlur: (value: number) => void
   /** Set the glass frost amount, 0-100. */
@@ -31,52 +41,65 @@ export interface AquaAppearanceRowInjected {
   setFluidHue: (value: number) => void
   /** Set the fluid depth, 0-100 (continuous). */
   setFluidDepth: (value: number) => void
-  /** Set the background brightness, 0-100 (0 = black, 50 = transparent, 100 = white). */
+  /** Set the backdrop brightness, 0-100. */
   setBgBrightness: (value: number) => void
-  /** Set the backdrop source. */
+  /** Switch the backdrop source. */
   setBackground: (value: 'fluid' | 'wallpaper') => void
-  /** Set the wallpaper image (a data URL). */
+  /** Set the wallpaper URL / blob id. */
   setWallpaper: (value: string) => void
-  /** Set the particle-whale flag. */
+  /** Toggle the particle whale. */
   setWhale: (value: boolean) => void
-  /** Set the ambient marine-life flag. */
+  /** Toggle the fish critters. */
   setCritters: (value: boolean) => void
-  /** Set the interactive-mesh flag. */
+  /** Toggle the interactive mesh. */
   setMesh: (value: boolean) => void
-  /** Set the cursor-spotlight flag. */
+  /** Toggle the cursor spotlight. */
   setSpotlight: (value: boolean) => void
-  /** Set the hover-press flag. */
-  setPress: (value: boolean) => void
+  /** Toggle the submenu click-hold shim. */
+  setSubmenuHold: (value: boolean) => void
+  /** Set the submenu surface opacity, 0-100. */
+  setMenuOpacity: (value: number) => void
+  /** Set the chat surface veil, 0-100. */
+  setChatAlpha: (value: number) => void
   /** Set the wallpaper blur radius, px. */
   setWallpaperBlur: (value: number) => void
-  /** Set the wallpaper frost veil, 0-100. */
+  /** Set the wallpaper frost amount, 0-100. */
   setWallpaperFrost: (value: number) => void
   /** Set the video wallpaper blur radius, px. */
   setVideoBlur: (value: number) => void
   /** Set the video wallpaper brightness, 0-100. */
   setVideoBrightness: (value: number) => void
-  /** Re-read the fsa: video after the user re-granted file access. */
+  /** Re-request permission for a remembered video file. */
   authorizeVideo: () => void
 }
 
-/** Full component props: runtime share + store share + locale seat + injected face. */
-export type AquaAppearanceRowComponentProps =
-  PropsRuntime<'settings.general.item'> & PropsStore<ReturnType<typeof createAquaRowStore>>
-  & PropsLocale<'settings.aqua'> & AquaAppearanceRowInjected
+/** The locale seat the slot renderer provides for a registration with `locale`. */
+export type AquaLocaleSeat = (key: AquaLocaleKey) => string
+
+/** The selector hook the slot renderer provides when a `store` is declared. */
+export type AquaUseStore = <T>(selector: (snapshot: AquaRowState) => T) => T
+
+/** Full component props: store share + locale seat + injected face. */
+export type AquaPanelContentComponentProps =
+  AquaPanelContentInjected & {
+    /** Localized copy seat for the `settings.aqua` namespace. */
+    t: AquaLocaleSeat
+    /** Selector hook over the panel store snapshot. */
+    useStore: AquaUseStore
+  }
 
 /**
- * Render the Aqua appearance row.
+ * Render the Aqua knob body.
  * @param props - composed slot props.
- * @returns the General section row.
+ * @returns the control groups.
  */
-export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
+export function AquaPanelContent(props: AquaPanelContentComponentProps) {
+  const { t, useStore } = props
   const {
-    t, setMode, setBlur, setFrost, setFluidHue, setFluidDepth, setBgBrightness,
-    setBackground, setWallpaper, setWhale, setCritters, setMesh, setSpotlight, setPress,
-    setWallpaperBlur, setWallpaperFrost, setVideoBlur, setVideoBrightness, authorizeVideo, useStore,
+    setBlur, setFrost, setFluidHue, setFluidDepth, setBgBrightness,
+    setBackground, setWallpaper, setWhale, setCritters, setMesh, setSpotlight, setSubmenuHold, setMenuOpacity, setChatAlpha,
+    setWallpaperBlur, setWallpaperFrost, setVideoBlur, setVideoBrightness, authorizeVideo,
   } = props
-  const enabled = useStore(s => s.enabled)
-  const mode = useStore(s => s.mode)
   const blur = useStore(s => s.blur)
   const frost = useStore(s => s.frost)
   const fluidHue = useStore(s => s.fluidHue)
@@ -88,7 +111,9 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
   const critters = useStore(s => s.critters)
   const mesh = useStore(s => s.mesh)
   const spotlight = useStore(s => s.spotlight)
-  const press = useStore(s => s.press)
+  const submenuHold = useStore(s => s.submenuHold)
+  const menuOpacity = useStore(s => s.menuOpacity)
+  const chatAlpha = useStore(s => s.chatAlpha)
   const wallpaper = useStore(s => s.wallpaper)
   const wallpaperBlur = useStore(s => s.wallpaperBlur)
   const wallpaperFrost = useStore(s => s.wallpaperFrost)
@@ -103,9 +128,9 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
 
   /** Pick a video. Chromium: File System Access — the browser remembers the
    *  file authorization, so later visits re-read the ORIGINAL file with no
-   *  storage copy. Other browsers fall back to the plain file input. */
+   *  storage copy. Other browsers (and Electron) fall back to the plain file input. */
   const pickVideo = (): void => {
-    if (window.showOpenFilePicker !== undefined) {
+    if (hasNativeFileSystemAccess()) {
       void (async () => {
         try {
           const [handle] = await window.showOpenFilePicker({
@@ -129,6 +154,7 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
         }
       })()
     } else {
+      // Electron or browsers without File System Access API: use native file input
       videoRef.current?.click()
     }
   }
@@ -136,7 +162,7 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
   /** 选择视频 click: an fsa: video with stale permission re-authorizes in
    *  one click (no picker); anything else opens the picker. */
   const onChooseVideo = (): void => {
-    if (wallpaper.startsWith('fsa:')) {
+    if (wallpaper.startsWith('fsa:') && hasNativeFileSystemAccess()) {
       void (async () => {
         const handle = await loadVideoHandle()
         if (handle !== null) {
@@ -172,39 +198,16 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
   const bgMax = dark ? 50 : 100
   const bgDisplay = Math.min(bgMax, Math.max(bgMin, bgBrightness))
 
-  // Off = the Plugins master switch is off: leave no trace in General.
-  if (!enabled) return null
-
   return (
     <div className={css.group}>
-      {/* 模式 */}
+      {/* 玻璃材质 */}
       <div className={css.subGroup}>
-        <div className={css.subTitle}>{t('aqua.mode')}</div>
+        <div className={css.subTitle}>{t('aqua.materialGroup')}</div>
         <div className={css.controls}>
-          <div className={css.row}>
-            <Segmented
-              label={t('aqua.mode')}
-              value={mode}
-              options={[
-                { id: 'mica', label: t('aqua.modeMica') },
-                { id: 'compat', label: t('aqua.modeCompat') },
-              ]}
-              onSelect={setMode}
-            />
-          </div>
+          <Knob label={t('aqua.blur')} value={blur} min={0} max={40} step={0.5} unit="px" onChange={setBlur} />
+          <Knob label={t('aqua.frost')} value={frost} min={0} max={100} step={1} unit="%" onChange={setFrost} />
         </div>
       </div>
-
-      {/* 玻璃材质：仅云母模式 */}
-      {mode === 'mica' && (
-        <div className={css.subGroup}>
-          <div className={css.subTitle}>{t('aqua.materialGroup')}</div>
-          <div className={css.controls}>
-            <Knob label={t('aqua.blur')} value={blur} min={0} max={40} step={0.5} unit="px" onChange={setBlur} />
-            <Knob label={t('aqua.frost')} value={frost} min={0} max={100} step={1} unit="%" onChange={setFrost} />
-          </div>
-        </div>
-      )}
 
       {/* 背景 */}
       <div className={css.subGroup}>
@@ -313,6 +316,12 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
           <div className={css.knobHint}>
             {t(dark ? 'aqua.bgBrightnessHintDark' : 'aqua.bgBrightnessHintLight')}
           </div>
+          {/* 面透明度：会话区底板与子菜单/弹层同为一档"面"的透明度。
+              0 = 壁纸/流体原样透出，100 = 完全不透明底板 */}
+          <Knob label={t('aqua.chatAlpha')} value={chatAlpha} min={0} max={100} step={1} unit="%" onChange={setChatAlpha} />
+          {/* 子菜单/弹层：浮在正文与输入框文字之上，需要比卡片更实的底色，
+              单独一档避免两段文字视觉重叠 */}
+          <Knob label={t('aqua.menuOpacity')} value={menuOpacity} min={0} max={100} step={1} unit="%" onChange={setMenuOpacity} />
         </div>
       </div>
 
@@ -329,7 +338,7 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
               onClick={() => { setWhale(!whale) }}
             >
               <span className={css.check}>
-                {whale && <IconCheckOutline16 />}
+                {whale && <IconCheckOutlineRegular />}
               </span>
               {whale ? t('aqua.enable') : t('aqua.disable')}
             </button>
@@ -343,7 +352,7 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
               onClick={() => { setCritters(!critters) }}
             >
               <span className={css.check}>
-                {critters && <IconCheckOutline16 />}
+                {critters && <IconCheckOutlineRegular />}
               </span>
               {critters ? t('aqua.enable') : t('aqua.disable')}
             </button>
@@ -357,7 +366,7 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
               onClick={() => { setMesh(!mesh) }}
             >
               <span className={css.check}>
-                {mesh && <IconCheckOutline16 />}
+                {mesh && <IconCheckOutlineRegular />}
               </span>
               {mesh ? t('aqua.enable') : t('aqua.disable')}
             </button>
@@ -365,42 +374,51 @@ export function AquaAppearanceRow(props: AquaAppearanceRowComponentProps) {
         </div>
       </div>
 
-      {/* 装饰：悬停效果（仅云母模式的漂浮玻璃） */}
-      {mode === 'mica' && (
-        <div className={css.subGroup}>
-          <div className={css.subTitle}>{t('aqua.decorHover')}</div>
-          <div className={css.controls}>
-            <div className={css.row}>
-              <span className={css.rowLabel}>{t('aqua.spotlight')}</span>
-              <button
-                type="button"
-                className={spotlight ? css.toggleOn : css.toggle}
-                aria-pressed={spotlight}
-                onClick={() => { setSpotlight(!spotlight) }}
-              >
-                <span className={css.check}>
-                  {spotlight && <IconCheckOutline16 />}
-                </span>
-                {spotlight ? t('aqua.enable') : t('aqua.disable')}
-              </button>
-            </div>
-            <div className={css.row}>
-              <span className={css.rowLabel}>{t('aqua.press')}</span>
-              <button
-                type="button"
-                className={press ? css.toggleOn : css.toggle}
-                aria-pressed={press}
-                onClick={() => { setPress(!press) }}
-              >
-                <span className={css.check}>
-                  {press && <IconCheckOutline16 />}
-                </span>
-                {press ? t('aqua.enable') : t('aqua.disable')}
-              </button>
-            </div>
+      {/* 子菜单交互：hover 开 + click 切换会让"点一下"把刚展开的二级又关掉
+          （鼠标必然先悬停再点击）。开启时吞掉这一次点击，让点击保持展开，
+          再点一次才收起。按 ARIA 契约生效，逐级通用，键盘路径不受影响。 */}
+      <div className={css.subGroup}>
+        <div className={css.subTitle}>{t('aqua.submenuGroup')}</div>
+        <div className={css.controls}>
+          <div className={css.row}>
+            <span className={css.rowLabel}>{t('aqua.submenuHold')}</span>
+            <button
+              type="button"
+              className={submenuHold ? css.toggleOn : css.toggle}
+              aria-pressed={submenuHold}
+              title={t('aqua.submenuHoldHint')}
+              onClick={() => { setSubmenuHold(!submenuHold) }}
+            >
+              <span className={css.check}>
+                {submenuHold && <IconCheckOutlineRegular />}
+              </span>
+              {submenuHold ? t('aqua.enable') : t('aqua.disable')}
+            </button>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* 装饰：悬停效果（下压效果已移除——3D 变换会让 backdrop-filter
+          玻璃整层重栅格化，文字发虚） */}
+      <div className={css.subGroup}>
+        <div className={css.subTitle}>{t('aqua.decorHover')}</div>
+        <div className={css.controls}>
+          <div className={css.row}>
+            <span className={css.rowLabel}>{t('aqua.spotlight')}</span>
+            <button
+              type="button"
+              className={spotlight ? css.toggleOn : css.toggle}
+              aria-pressed={spotlight}
+              onClick={() => { setSpotlight(!spotlight) }}
+            >
+              <span className={css.check}>
+                {spotlight && <IconCheckOutlineRegular />}
+              </span>
+              {spotlight ? t('aqua.enable') : t('aqua.disable')}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

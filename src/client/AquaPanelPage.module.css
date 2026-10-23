@@ -1,0 +1,117 @@
+/* Aqua sidebar panel page — mirrors the host's own page shell (page /
+   pageScroll / pageContent / heading) so the glass surface sits on the
+   platform's layout rhythm instead of inventing a new one. */
+
+.page {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  overflow: hidden;
+}
+
+.pageScroll {
+  scrollbar-gutter: stable;
+  --dsh-scrollbar-width: 9px;
+  --dsh-scrollbar-thumb-border: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pageContent {
+  max-width: 960px;
+  margin: 0 auto;
+  /* Top padding carries the old heading block's clearance (plus the
+     darwin title-bar inset); the master card is now the first block. */
+  padding: 0 clamp(24px, 4vw, 48px) 48px;
+}
+
+[data-platform='darwin'] .pageContent {
+  padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px));
+}
+
+/* Master switch card */
+
+.master {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0 8px;
+  padding: 16px 18px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.masterText {
+  flex: 1;
+  min-width: 0;
+}
+
+.masterTitle {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.masterDescription {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Toggle pill (shared shape with the knob rows) */
+
+.toggle,
+.toggleOn {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle:hover,
+.toggleOn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.toggleOn {
+  color: var(--dsw-alias-state-business-primary);
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.check {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.body {
+  margin-top: 12px;
+}
+
+.page :focus-visible {
+  outline: 2px solid var(--dsh-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
