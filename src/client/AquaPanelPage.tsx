@@ -8,7 +8,6 @@
  */
 import { IconCheckOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AquaPanelContent, type AquaPanelContentComponentProps, type AquaPanelContentInjected } from './AquaPanelContent.tsx'
-import type { AquaPanelActions } from './settings-store.ts'
 import css from './AquaPanelPage.module.css'
 
 /** Injected business face: the master enable write. */
@@ -17,9 +16,17 @@ export interface AquaPanelPageInjected extends AquaPanelContentInjected {
   setEnabled: (enabled: boolean) => void
 }
 
-/** Full component props: store share + locale seat + injected face. */
+/**
+ * Full component props: injected face + locale seat + store selector.
+ *
+ * The store's baked actions are deliberately NOT part of this contract. The
+ * page only reads the snapshot (`useStore`) and writes through the injected
+ * setters; the layer->store direction is the inject factory's job, and it
+ * receives the actions directly. Requiring them here would also fight the
+ * host's composed-props share, which exposes them separately as `actions`.
+ */
 export type AquaPanelPageComponentProps =
-  AquaPanelPageInjected & AquaPanelActions & {
+  AquaPanelPageInjected & {
     /** Localized copy seat for the `settings.aqua` namespace. */
     t: AquaPanelContentComponentProps['t']
     /** Selector hook over the panel store snapshot. */

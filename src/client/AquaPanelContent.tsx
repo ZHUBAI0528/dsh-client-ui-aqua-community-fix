@@ -131,9 +131,14 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
    *  storage copy. Other browsers (and Electron) fall back to the plain file input. */
   const pickVideo = (): void => {
     if (hasNativeFileSystemAccess()) {
+      // `showOpenFilePicker` is declared optional in lib.dom (Chromium-only);
+      // `hasNativeFileSystemAccess()` already proved it exists at runtime, but
+      // binding it to a local narrows the type for the call below.
+      const picker = window.showOpenFilePicker
+      if (picker === undefined) return
       void (async () => {
         try {
-          const [handle] = await window.showOpenFilePicker({
+          const [handle] = await picker({
             multiple: false,
             types: [{ description: 'Video', accept: { 'video/*': ['.mp4', '.webm', '.ogg', '.mov', '.m4v', '.mkv'] } }],
           })

@@ -180,6 +180,18 @@ export function apply(ctx: ClientContext): void {
     key: PANEL_ID,
     store: aquaPanelStore,
     locale: NS,
-    inject: panelInjected,
+    // Runtime contract: the registry calls this factory with the store's baked
+    // actions as the only argument for a root-scope slot — the host's own
+    // registers read `inject: (sessionId, actions)` for session slots, which
+    // is the same call with the session id prepended.
+    //
+    // Typing gap: `InjectParams<K, H>` derives the parameter tuple from
+    // `[H] extends [StoreDecl]`, but `register`'s `H` declares the default
+    // `= undefined`; the inference loop settles on that default, so the tuple
+    // collapses to `[]` and a correctly-typed one-argument factory is
+    // rejected. The assertion below restates the declared shape without
+    // touching the runtime path (which still receives `actions`). Remove it
+    // once the host stops defaulting `H`.
+    inject: panelInjected as unknown as () => AquaPanelPageInjected,
   }, AquaPanelPage))
 }
