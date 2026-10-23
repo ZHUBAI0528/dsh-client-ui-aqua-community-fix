@@ -14,9 +14,10 @@ import type { ThemeTokenOverrides } from '@deepseek-ai/dsh-client-ui-theme/clien
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { ensureAmbientScene, removeAmbientScene, ensurePageFades, removePageFades } from './critters.ts'
+import { startEdgeMetrics, type EdgeMetricsHandle } from './edge-metrics.ts'
 import { attachFluidShader, SITE_FLUID_PARAMS, type FluidParams, type FluidShaderHandle } from './fluid-shader.ts'
 import { fluidToneColors, HUE_BASE } from './fluid-tones.ts'
-import { deleteVideoBlob, loadVideoBlob, loadVideoHandle } from './wallpaper-store.ts'
+import { deleteVideoBlob, deleteVideoHandle, loadVideoBlob, loadVideoHandle } from './wallpaper-store.ts'
 import { attachFluidInteractions } from './fluid-interactions.ts'
 import { startSeamStamper } from './seam-stamper.ts'
 import { startSubmenuHold } from './submenu-hold.ts'
@@ -52,7 +53,7 @@ export const AQUA_ENABLED_KEY = 'dsh.ui-aqua.enabled'
 export const DEFAULT_ENABLED = true
 
 /** The layer's identity in the theme override stack (inspection-visible). */
-const OVERRIDE_SOURCE = '@zhubai0528/dsh-client-ui-aqua'
+const OVERRIDE_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix'
 
 const FONT_STACK = "'Space Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', "
   + "'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif"
@@ -473,6 +474,7 @@ export class AquaLayer {
   private fluidRetries = 0
   private lateApplyTimers: number[] = []
   private spotlightDisposer: (() => void) | undefined
+  private edgeMetrics: EdgeMetricsHandle | undefined
   private whaleHandle: WhaleHandle | undefined
   private meshHandle: MeshHandle | undefined
   /** Object URL of the current large-video wallpaper (revoked on replace). */
@@ -675,6 +677,12 @@ export class AquaLayer {
     writeWallpaper(value)
     if (previous.startsWith('idb:') && value !== previous) {
       void deleteVideoBlob(previous.slice(4))
+    }
+    // A remembered file handle is a standing read grant on a file outside the
+    // app. Drop it together with the wallpaper it was picked for — otherwise
+    // deleting the wallpaper leaves the grant behind, invisible to the user.
+    if (previous.startsWith('fsa:') && value !== previous) {
+      void deleteVideoHandle()
     }
     if (!value.startsWith('idb:') && this.videoObjectUrl !== undefined) {
       URL.revokeObjectURL(this.videoObjectUrl)
@@ -970,9 +978,11 @@ export class AquaLayer {
     this.applyTokens()
     this.mountFluid()
     this.startSeamStamper()
+    this.startEdgeMetrics()
     this.startSpotlightFeed()
     this.syncWhale()
     this.syncMesh()
+    this.syncSubmenuHold()
   }
 
   /**
@@ -1105,8 +1115,13 @@ export class AquaLayer {
     this.teardownFluid()
     removeAmbientScene()
     removePageFades()
+    this.edgeMetrics?.dispose()
+    this.edgeMetrics = undefined
     this.seamDisposer?.()
     this.seamDisposer = undefined
+    // The click-hold shim is behaviour, not paint — release it with the layer
+    // (see syncSubmenuHold). `enabled` is already false here.
+    this.syncSubmenuHold()
   }
 
   /** Attach the fluid shader and the interaction feeds. */
@@ -1180,16 +1195,37 @@ export class AquaLayer {
     this.seamDisposer = startSeamStamper()
   }
 
-  /** Release the interaction shims. Plugin disposal only — the visual flip
-   *  (setEnabled -> unmount) deliberately leaves them running. */
+  /**
+   * Measure the two chrome/transcript seams (header card top, composer glass
+   * bottom) and feed the results to the stylesheet. Idempotent per mount: the
+   * previous handle is released first so a re-mount cannot leave a second
+   * measurement loop and a second veil behind.
+   */
+  private startEdgeMetrics(): void {
+    this.edgeMetrics?.dispose()
+    this.edgeMetrics = startEdgeMetrics()
+  }
+
+  /** Release every interaction shim. Called on plugin disposal; the visual
+   *  flip (setEnabled -> unmount) releases them too, so this is the
+   *  belt-and-braces path that must stay idempotent. */
   dispose(): void {
     this.submenuHoldDisposer?.()
     this.submenuHoldDisposer = undefined
   }
 
-  /** Attach or drop the submenu click-hold shim (idempotent). */
+  /**
+   * Attach or drop the submenu click-hold shim (idempotent).
+   *
+   * Gated on the layer being ON as well as on the knob, because the shim
+   * changes behaviour, not paint: it swallows exactly one click on every
+   * expandable row in the app. Left armed while the theme is off it would keep
+   * rewriting click handling with no visible cause — and with no way to opt
+   * out, since the panel hides its knobs while disabled. "Off == the stock UI"
+   * has to cover behaviour too.
+   */
   private syncSubmenuHold(): void {
-    if (this.settings.submenuHold) {
+    if (this.enabled && this.settings.submenuHold) {
       if (this.submenuHoldDisposer === undefined) this.submenuHoldDisposer = startSubmenuHold()
       return
     }

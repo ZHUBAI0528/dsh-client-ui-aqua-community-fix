@@ -4,6 +4,22 @@ English | [中文](README.zh.md)
 
 > **Upstream notice**: this package continues from **WYH66666666**'s [DSH-Transparent-UI-Plugin](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin) (published on npm as `dsh-client-ui-aqua`) at **v1.3.0**. The original author states he cannot keep up with new DSH APIs, so this fork fixes and adapts that code. It is **not guaranteed** to work with future DSH versions — back up your profile before upgrading DSH.
 
+## Supported DSH version
+
+| Item | Value |
+|---|---|
+| **DSH desktop / web** | **V0.2.1-rc.2** |
+| Host client packages | `@deepseek-ai/dsh-client-*` **0.2.1-rc.2** |
+| Declared in metadata | `package.json` → `engines.dsh: ">=0.2.1-rc.2 <0.3.0"` |
+
+**V0.2.1-rc.2 is the version this release is built and verified against** — the theme hooks are read from that host build (page-head markup, composer/dock seams, slot names). These are private client surfaces, so a DSH upgrade can break the look or the mount even though nothing changes here. If you are on another DSH build, treat the theme as unsupported and keep a profile backup.
+
+## Topics / community listing
+
+Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin community page](https://github.com/topics/dsh-plugin) alongside other DeepSeek Harness plugins.
+
+`dsh-plugin` · `dsh` · `deepseek-harness` · `deepseek-harness-plugin` · `theme` · `glassmorphism` · `aqua`
+
 ## Credits
 
 | Item | Value |
@@ -12,8 +28,9 @@ English | [中文](README.zh.md)
 | Upstream npm package | `dsh-client-ui-aqua` (latest 1.3.1) |
 | Base of this fork | upstream **v1.3.0** sources |
 | Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua) |
-| This package | `@zhubai0528/dsh-client-ui-aqua` |
-| Version | **2.0.0** (independent since this release) |
+| This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
+| Version | **2.1.0** (independent since this release) |
+| **DSH support** | **V0.2.1-rc.2** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
 Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web UI and desktop app. The floating header, composer and stats line, and the trajectory view become panes of frosted glass, while the main column can sit on the living fluid board or on your own wallpaper (image or video); the sidebar keeps its stock look. Switch it off and the stock UI comes back exactly, with no source changes to DSH itself.
@@ -46,10 +63,14 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 ## Features (current)
 
 - **Mica layout**: floating glass header, composer, stats line and trajectory view, with adjustable blur and frost
+- **Theme control panel**: one page collects every knob — colours, wallpaper, opacity, blur and decor
+- **No 3D tilt on the composer**: the 3D effect is gone — it interfered with text rendering
 - **Free backdrop**: the living fluid board (hue and depth adjustable) or your own wallpaper — images and video both supported; wallpapers have their own blur and frost, video adds a brightness knob
+- **Desktop scheme following**: tracks the desktop app's light/dark switch and re-tunes the palette, glow and brightness direction on its own
 - **Background brightness**: follows the resolved scheme — dark 0–50 darkens, light 50–100 brightens, 50 is unchanged
 - **Chat surface opacity**: 0 lets the wallpaper/fluid show untouched, 100 is an opaque slab
 - **Submenu opacity**: fill strength for popups (menus, dropdowns, quick-invoke panels), independent of the cards
+- **Submenu display**: popups get a 96% fill plus extra blur, so multi-level menus stay legible above the transcript
 - **Submenu interaction → click keeps it open**: a hover-opened submenu stays open when clicked, and closes on the next click
 - **Ambient decor**: particle whale (the deepseek.com/harness centerpiece), fish, and the interactive mesh — each toggleable
 - **Hover effects → cursor glow**: a highlight that follows the pointer
@@ -59,12 +80,12 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ## Installation
 
-> Upstream `dsh-client-ui-aqua` and this fork `@zhubai0528/dsh-client-ui-aqua` must **not** be installed together — the profile would end up with two `ui-aqua` entries.
+> Upstream `dsh-client-ui-aqua` and this fork `@zhubai0528/dsh-client-ui-aqua-community-fix` must **not** be installed together — the profile would end up with two `ui-aqua` entries.
 
 ### Option 1: npm one-liner (recommended)
 
 ```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
 Installs the latest version from npm and registers it as a profile plugin layer (`dsh.bundle` patch) — works on every platform. Reload the UI and it is on.
@@ -85,7 +106,7 @@ Installs the **latest release** by default; the script links the plugin into the
 
 ```sh
 git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git
-ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua"
+ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
 ```
 
 then append to `$DSH_HOME/profiles/web/cordis.patch.yml`:
@@ -93,7 +114,7 @@ then append to `$DSH_HOME/profiles/web/cordis.patch.yml`:
 ```yaml
 - insert:
     - id: ui-aqua
-      name: '@zhubai0528/dsh-client-ui-aqua'
+      name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
 ```
 
 ## Usage

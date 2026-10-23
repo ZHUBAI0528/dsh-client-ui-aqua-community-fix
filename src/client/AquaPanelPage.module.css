@@ -27,26 +27,40 @@
 .pageContent {
   max-width: 960px;
   margin: 0 auto;
-  /* Top padding carries the old heading block's clearance (plus the
-     darwin title-bar inset); the master card is now the first block. */
+  /* No top clearance here: the heading is a card again (see `.master`) and
+     carries its own inset, exactly like the host's `page` which pads sides and
+     bottom only. */
   padding: 0 clamp(24px, 4vw, 48px) 48px;
 }
 
-[data-platform='darwin'] .pageContent {
-  padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px));
-}
+/* Heading card — the SAME element contract the host's 【插件】page uses.
 
-/* Master switch card */
+   `ui-plugin-manager` renders `<header class="pageHead">`, and the aqua
+   stylesheet already owns that element globally:
 
+     [data-dsh-float] header      → margin 12px 16px 0, padding 10px 16px 8px,
+                                    radius 20px, transparent box
+     [data-dsh-float] header::before → 1px border, translucent glass fill,
+                                    inset top highlight, soft drop shadow
+
+   So a page head that is a plain <div>/<section> gets nothing (that is why the
+   previous flat version lost the card), while a <header> inherits the exact
+   border, radius, padding and frosted depth the 插件 page shows — same recipe
+   object, not a look-alike. This block therefore only declares the LAYOUT
+   (flex row, heading text left / action right) and leaves every surface
+   property to that rule.
+
+   `padding-top` here is the unthemed fallback: with the theme off the header
+   keeps the host's 28px head clearance (matching `.pageHead`). When the theme
+   is on, the theme's `padding` shorthand out-ranks this single longhand, so
+   the card inset is identical to the 插件 page instead of stacking with it. */
 .master {
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
-  margin: 24px 0 8px;
-  padding: 16px 18px;
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  border-radius: 16px;
-  background: var(--dsw-alias-bg-layer-1);
+  padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px));
 }
 
 .masterText {
@@ -55,17 +69,17 @@
 }
 
 .masterTitle {
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 500;
-  line-height: 22px;
+  line-height: 28px;
   color: var(--dsw-alias-label-primary);
 }
 
 .masterDescription {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 13px;
   line-height: 20px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
 }
 
 /* Toggle pill (shared shape with the knob rows) */
@@ -108,7 +122,10 @@
 }
 
 .body {
-  margin-top: 12px;
+  /* The host's page shell spaces its children by 32px (`page { gap }`), with
+     the heading card's own 8px bottom padding on top of that. Matching it
+     keeps the card from crowding the first knob group. */
+  margin-top: 32px;
 }
 
 .page :focus-visible {

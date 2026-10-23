@@ -9,6 +9,7 @@
  * collapse, width resizes, and late layout. Everything is removed on
  * dispose: off == the stock wordmark exactly.
  */
+import { subscribeDomMutations } from './dom-feed.ts'
 
 /** Pill recipe from the official site (`bg-black/25 text-white/95 …`). */
 const PILL_BG = 'rgba(0, 0, 0, 0.25)'
@@ -141,8 +142,7 @@ export function startWordmarkBadge(dark: boolean): BadgeHandle {
   }
 
   apply()
-  const observer = new MutationObserver(() => { apply() })
-  observer.observe(document.documentElement, { childList: true, subtree: true })
+  const unsubscribe = subscribeDomMutations(apply)
   window.addEventListener('resize', apply)
   // Any finished CSS transition/animation re-runs one final placement, so
   // the pill never settles at a mid-flight geometry.
@@ -155,7 +155,7 @@ export function startWordmarkBadge(dark: boolean): BadgeHandle {
       apply()
     },
     dispose: (): void => {
-      observer.disconnect()
+      unsubscribe()
       window.removeEventListener('resize', apply)
       document.removeEventListener('transitionend', apply, true)
       document.removeEventListener('animationend', apply, true)

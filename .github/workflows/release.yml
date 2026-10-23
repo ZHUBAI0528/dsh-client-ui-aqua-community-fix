@@ -20,3 +20,4 @@ jobs:
           files: |
             lib/client.js
             install.ps1
+            SHA256SUMS.txt

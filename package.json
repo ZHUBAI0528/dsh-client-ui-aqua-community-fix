@@ -1,7 +1,7 @@
 {
-  "name": "@zhubai0528/dsh-client-ui-aqua",
-  "description": "Aqua: a highly customizable glassmorphism theme for the Web surface — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
-  "version": "2.0.0",
+  "name": "@zhubai0528/dsh-client-ui-aqua-community-fix",
+  "description": "Aqua glass theme for DeepSeek Harness V0.2.1-rc.2 — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
+  "version": "2.1.0",
   "publishConfig": {
     "access": "public"
   },
@@ -19,7 +19,10 @@
     "dsh-plugin",
     "theme",
     "glassmorphism",
-    "blur"
+    "blur",
+    "deepseek-harness",
+    "desktop",
+    "frosted-glass"
   ],
   "type": "module",
   "main": "lib/index.js",
@@ -56,7 +59,7 @@
     }
   },
   "scripts": {
-    "bundle": "tsdown && node scripts/inline-css.mjs && node scripts/esm2cjs.mjs",
+    "bundle": "tsdown && node scripts/inline-css.mjs && node scripts/esm2cjs.mjs && node scripts/write-checksums.mjs",
     "typecheck": "tsc --noEmit",
     "watch": "tsdown --watch",
     "prepublishOnly": "npm run bundle"
@@ -104,6 +107,6 @@
     "assets"
   ],
   "engines": {
-    "dsh": ">=0.1.0-rc.0"
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
   }
 }

@@ -6,8 +6,9 @@
  * seam-stamper. One injected overlay lives inside a spot:
  * `data-dsh-aqua-glow` — the cursor glow surface (geometry set by the hover
  * controller; the radial fill lives in the stylesheet). It is re-attached
- * after React re-renders wipe it (one shared MutationObserver).
+ * after React re-renders wipe it (through the plugin's shared DOM feed).
  */
+import { subscribeDomMutations } from './dom-feed.ts'
 
 /** Seam attribute marking a floating-glass pane as a spotlight target. */
 export const SPOT_ATTR = 'data-dsh-aqua-spot'
@@ -112,9 +113,12 @@ export function ensureGlow(spot: HTMLElement): HTMLElement {
 }
 
 /**
- * One shared observer + resize feed: keeps the glow divs glued to the panes
- * through React re-renders and notifies the caller of DOM/layout changes
- * (the caller coalesces the callbacks).
+ * One shared DOM feed (see `dom-feed.ts`) + resize feed: keeps the glow divs
+ * glued to the panes through React re-renders and notifies the caller of
+ * DOM/layout changes (the caller coalesces the callbacks).
+ *
+ * The pane sweep runs at most once per frame, so a streaming message cannot
+ * trigger a querySelectorAll storm over the whole document.
  * @returns a disposer that removes every injected glow div.
  */
 export function startOverlayKeeper(onChange: () => void): () => void {
@@ -123,11 +127,10 @@ export function startOverlayKeeper(onChange: () => void): () => void {
     onChange()
   }
   tick()
-  const observer = new MutationObserver(tick)
-  observer.observe(document.documentElement, { childList: true, subtree: true })
+  const unsubscribe = subscribeDomMutations(tick)
   window.addEventListener('resize', tick, { passive: true })
   return () => {
-    observer.disconnect()
+    unsubscribe()
     window.removeEventListener('resize', tick)
     for (const glow of document.querySelectorAll(`[${GLOW_ATTR}]`)) glow.remove()
   }

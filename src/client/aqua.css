@@ -110,10 +110,10 @@
   z-index: 8;
 }
 
-/* The top/bottom frost bands that used to sit behind the floating header and
-   composer were removed on request: they read as an extra gradient wash over
-   the page edges. The column keeps its own veil (see above), and the 13px
-   edge fades (data-dsh-aqua-fade) still soften the extreme viewport edges. */
+/* The seam blur bands (data-dsh-aqua-seam) live further down, next to the page
+   edge fades: they belong to the same family of softening layers. Unlike the
+   page fades they are pinned to the GLASS JOINTS (header card bottom, column
+   bottom), not to the viewport edge. */
 
 /* The floating header breaks the code block banner's sticky anchoring, so
    disable stickiness —the banner stays on its code block and scrolls with
@@ -122,9 +122,22 @@
   position: static;
 }
 
+/* The scrollport's top edge must land exactly on the header card's top edge:
+   everything above that line is bare transcript (sharp, hard-clipped by the
+   column), everything below it passes under the frosted card.
+
+   The lift is no longer a constant. `-95px` encoded the header height of one
+   specific build; the current header is shorter, so the scrollport ended up
+   ABOVE the card and the surplus band showed a strip of cut-in-half text
+   between the card and the conversation's top boundary. `edge-metrics` reads
+   the live header box and writes the distance the scrollport has to travel
+   into `--dsh-aqua-scroll-lift`, so the boundary tracks the card at any header
+   height (language switch, extra status row, resize). Padding follows the same
+   variable, which keeps the content's 12px clearance below the card intact —
+   only the invisible clipping line moves, nothing reflows. */
 [data-dsh-float] [data-phase='active'] [data-conversation-scroll] {
-  margin-top: -95px;
-  padding-top: 107px;
+  margin-top: calc(-1 * var(--dsh-aqua-scroll-lift, 95px));
+  padding-top: calc(var(--dsh-aqua-scroll-lift, 95px) + 12px);
 }
 
 /* No scrim: the transcript and details sit directly on the (now slightly
@@ -634,17 +647,45 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   --dsl-search-radius: 14px;
 }
 
-/* ---------- Session header: a detached glass card, same recipe as the
-   composer. The bottom edge opens into the chat —no bottom border and a
-   shallow shadow, so the original header/chat divider line is gone.
+/* ---------- Page head: a detached glass card, same recipe as the composer.
+   The bottom edge opens into the chat —no bottom border and a shallow shadow,
+   so the original header/chat divider line is gone.
 
    Like the composer card, the blur rides a ::before LAYER: a
    backdrop-filter on the header would trap fixed-position popups mounted
    inside it (other plugins' dropdowns in the session header action row)
-   into the header's box instead of the viewport. ---------- */
-[data-dsh-float] header {
+   into the header's box instead of the viewport.
+
+   WHAT IT COVERS: two shapes, because the host is not consistent itself —
+   `ui-plugin-manager` renders `<header class="pageHead">` while
+   `ui-schedule` (自动化任务) renders `<div class="pageHeading"><h1>…`. Both class
+   names share the `pageHead` stem, so one substring hook catches both, and the
+   chat's own `<header>` keeps the element hook. Without the second selector
+   the tasks page head stayed a bare text row while the plugins page had a
+   card — the inconsistency this rule exists to remove.
+
+   SCOPE: the center column only. The element hook used to be the bare
+   `header`, which card-ed every <header> in the document — including page
+   heads rendered by other plugins outside the main column and any header
+   inside a portaled dialog (mounted on <body>). The attribute and the class
+   fallback are matched together for the same reason as the column veil above:
+   the stamp can land late on a cold boot, the class cannot.
+
+   WIDTH: the card spans the content column (no horizontal margin) so its edges
+   line up with the content below it. Only the chat header keeps a 16px gutter
+   (see the override right after this block) because it has to agree with the
+   composer card, not with a page. ---------- */
+[data-dsh-float] [data-dsh-center] header,
+[data-dsh-float] [class*='centerCol'] header,
+[data-dsh-float] [data-dsh-center] [class*='pageHead'],
+[data-dsh-float] [class*='centerCol'] [class*='pageHead'] {
   position: relative;
-  margin: 12px 16px 0;
+  /* Longhands on purpose: `margin-bottom` is left to the host (`.pageHeading`
+     carries 24px there, `.pageHead` relies on its page's flex gap) so each
+     page keeps its own rhythm under the card. */
+  margin-top: 12px;
+  margin-right: 0;
+  margin-left: 0;
   padding: 10px 16px 8px;
   border: none;
   border-radius: 20px;
@@ -652,7 +693,21 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   box-shadow: none;
 }
 
-[data-dsh-float] header::before {
+/* Chat header: the composer card keeps a 16px gutter, so the header card
+   agrees with it instead of with a page column. Declared after the recipe so
+   the longhands win the tie at equal specificity. `margin-bottom: 0` restores
+   what the old `margin: 12px 16px 0` shorthand used to say — page heads keep
+   their host bottom margin, the chat header does not need one. */
+[data-dsh-float] [data-phase='active'] header {
+  margin-left: 16px;
+  margin-right: 16px;
+  margin-bottom: 0;
+}
+
+[data-dsh-float] [data-dsh-center] header::before,
+[data-dsh-float] [class*='centerCol'] header::before,
+[data-dsh-float] [data-dsh-center] [class*='pageHead']::before,
+[data-dsh-float] [class*='centerCol'] [class*='pageHead']::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -667,11 +722,42 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
 
-[data-dsh-float] header::after {
+[data-dsh-float] [data-dsh-center] header::after,
+[data-dsh-float] [class*='centerCol'] header::after,
+[data-dsh-float] [data-dsh-center] [class*='pageHead']::after,
+[data-dsh-float] [class*='centerCol'] [class*='pageHead']::after {
   display: none;
 }
 
-[data-dsh-float] body[data-ds-dark-theme] header::before {
+/* Nested head: NOT a head.
+   The host nests its page-head blocks — `<header class="pageHead"><div
+   class="pageHeading"><h1>` (plugin page) — and the `pageHead` substring hook
+   above matches BOTH levels, so the inner block drew a second rounded box
+   around the title inside the outer card. The outer element is the head; the
+   inner one is its heading TEXT block and must stay transparent.
+   Four attribute selectors beat the three of the recipe above, so this wins on
+   specificity rather than on source order. */
+[data-dsh-float] [data-dsh-center] [class*='pageHead'] [class*='pageHead'],
+[data-dsh-float] [class*='centerCol'] [class*='pageHead'] [class*='pageHead'] {
+  position: static;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+[data-dsh-float] [data-dsh-center] [class*='pageHead'] [class*='pageHead']::before,
+[data-dsh-float] [class*='centerCol'] [class*='pageHead'] [class*='pageHead']::before,
+[data-dsh-float] [data-dsh-center] [class*='pageHead'] [class*='pageHead']::after,
+[data-dsh-float] [class*='centerCol'] [class*='pageHead'] [class*='pageHead']::after {
+  content: none;
+}
+
+[data-dsh-float] body[data-ds-dark-theme] [data-dsh-center] header::before,
+[data-dsh-float] body[data-ds-dark-theme] [class*='centerCol'] header::before,
+[data-dsh-float] body[data-ds-dark-theme] [data-dsh-center] [class*='pageHead']::before,
+[data-dsh-float] body[data-ds-dark-theme] [class*='centerCol'] [class*='pageHead']::before {
   border-color: rgba(148, 180, 220, 0.32);
   border-bottom-color: transparent;
   background: var(--dsh-aqua-glass-card-dark);
@@ -681,9 +767,11 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
 }
 
 /* Collapsed: the floating rail reaches 12px into the chat gutter, so the
-   header card steps right (28px inset = 16px clear of the rail's edge) —
-   the sidebar keeps its geometry, the top bar does the adjusting. */
-[data-dsh-float] [data-dsh-frame][data-sidebar-collapsed] header {
+   chat's header card steps right (28px inset = 16px clear of the rail's edge)
+   — the sidebar keeps its geometry, the top bar does the adjusting. Page heads
+   do NOT step: they are aligned to the page column, which moves with the rail
+   on its own. */
+[data-dsh-float] [data-dsh-frame][data-sidebar-collapsed] [data-phase='active'] header {
   margin-left: 28px;
 }
 
@@ -985,6 +1073,38 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   bottom: 0;
   -webkit-mask-image: linear-gradient(0deg, black 0%, transparent 100%);
   mask-image: linear-gradient(0deg, black 0%, transparent 100%);
+}
+
+/* ---------- Seam blur: the two gutters between the page boundary and the
+   floating chrome — above the header card, and below the statistics dock.
+
+   These two strips are the only places in the chat where content belongs to
+   nobody: the transcript scrolls past them, the glass starts or stops at their
+   inner edge, and whatever the layout leaves showing there is hard-clipped. A
+   plain backdrop blur over exactly that strip is all they need.
+
+   WHAT THIS IS NOT — a fade over the conversation. An earlier version painted
+   40px tinted bands onto the message flow (under the card and above the
+   composer) to "dissolve" text into the glass. That reads as a bright
+   horizontal slab lying on the transcript: the glass already ends in a clean
+   edge there, so the band did not soften a seam, it made one. Hence: no fill,
+   no mask, no ramp — blur only, sized to the gutter it owns, so nothing
+   outside those two strips is touched.
+
+   z-index 7 keeps the bands above the scrolling transcript and below the glass
+   panes (8). ---------- */
+[data-dsh-aqua] [data-dsh-aqua-seam] {
+  display: none;
+}
+
+[data-dsh-aqua][data-dsh-float] [data-dsh-aqua-seam][data-on] {
+  display: block;
+  position: fixed;
+  z-index: 7;
+  pointer-events: none;
+  /* Never fully off, even at blur 0: a hair of frost is what hides the clipped
+     sliver; the knob only scales it. */
+  backdrop-filter: blur(calc(6px + var(--dsh-aqua-blur, 14px) * 0.8)) saturate(1.04);
 }
 
 /* ---------- Keyboard focus and text selection (both schemes). ---------- */

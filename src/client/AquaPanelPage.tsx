@@ -38,7 +38,12 @@ export function AquaPanelPage(props: AquaPanelPageComponentProps) {
     <div className={css.page}>
       <div className={css.pageScroll}>
         <div className={css.pageContent}>
-          <section className={css.master}>
+          {/* A <header> on purpose: the theme's own card recipe keys off that
+              element (`[data-dsh-float] header` + `::before`), which is how the
+              host's 【插件】page head gets its border, radius, padding and
+              frosted depth. Any other tag would need a parallel copy of that
+              recipe and drift from it on the next tweak. */}
+          <header className={css.master}>
             <div className={css.masterText}>
               <div className={css.masterTitle}>{t('aqua.title')}</div>
               <div className={css.masterDescription}>{t('aqua.description')}</div>
@@ -54,7 +59,7 @@ export function AquaPanelPage(props: AquaPanelPageComponentProps) {
               </span>
               {enabled ? t('aqua.enable') : t('aqua.disable')}
             </button>
-          </section>
+          </header>
 
           {enabled && (
             <div className={css.body}>

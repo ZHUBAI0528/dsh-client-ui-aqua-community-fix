@@ -120,3 +120,26 @@ export async function loadVideoHandle(): Promise<FileSystemFileHandle | null> {
     return null
   }
 }
+
+/**
+ * Forget the remembered file handle.
+ *
+ * The handle is a standing read grant on a file outside the app; once the
+ * wallpaper it belonged to is gone there is no reason to keep it, and every
+ * residual grant is a privacy liability the user cannot see or revoke from
+ * the UI. The file on disk is untouched — only the stored permission record
+ * is dropped.
+ */
+export async function deleteVideoHandle(): Promise<void> {
+  try {
+    const db = await openDb()
+    await new Promise<void>((resolve) => {
+      const request = tx(db, 'readwrite').delete(HANDLE_KEY)
+      request.onsuccess = () => { resolve() }
+      request.onerror = () => { resolve() }
+    })
+    db.close()
+  } catch {
+    /* nothing to clean */
+  }
+}

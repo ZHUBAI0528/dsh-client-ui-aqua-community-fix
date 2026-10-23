@@ -1,7 +1,7 @@
 # Aqua installer (Windows) - BACKUP method. The recommended install is the
 # npm one-liner (no account, no git, no manual steps, all platforms):
 #
-#   dsh plugin --profile web add 
+#   dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 #
 # This script is the GitHub fallback: no npm, no git required.
 #
@@ -29,10 +29,66 @@ param(
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Windows PowerShell 5.1 writes a UTF-8 BOM for `Set-Content -Encoding UTF8`.
+# A BOM at the head of a JSON manifest makes V8's JSON.parse throw
+# ("Unexpected token '\uFEFF'"), which aborts the DSH host at startup — so all
+# file writes below go through .NET with an explicit no-BOM encoder.
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+function Write-Utf8NoBom {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Text)
+    [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom)
+}
+
+# Verify the bundle that is about to be linked into the profile.
+#
+# This script installs code from a GitHub snapshot, which is normally fetched
+# as a plain archive with no signature. The repo publishes SHA256SUMS.txt
+# (written by `npm run bundle`) covering lib/client.js — the one file the
+# plugin actually executes — so the installer can compare the bytes it
+# unpacked against the bytes the maintainer built.
+#
+# Policy: a MATCH is required, a MISSING manifest is not. Older releases and
+# branch installs predate the manifest, and refusing them would break installs
+# that work today; a MISMATCH always aborts, because that is either tampering
+# or a corrupted download.
+function Test-BundleChecksum {
+    param(
+        [Parameter(Mandatory)][string]$BundlePath,
+        [Parameter(Mandatory)][string]$Slug,
+        [Parameter(Mandatory)][string]$Ref
+    )
+    $url = "https://raw.githubusercontent.com/$Slug/$Ref/SHA256SUMS.txt"
+    try {
+        $manifest = (Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 15).Content
+    } catch {
+        Write-Host "  (no SHA256SUMS.txt at $Ref - integrity check skipped)" -ForegroundColor DarkYellow
+        return
+    }
+    $expected = $null
+    foreach ($line in ($manifest -split "`n")) {
+        $trim = $line.Trim()
+        if (-not $trim) { continue }
+        $parts = $trim -split '\s+', 2
+        if ($parts.Count -lt 2) { continue }
+        $path = $parts[1].TrimStart('*').Trim()
+        if ($path -eq 'lib/client.js') { $expected = $parts[0].Trim().ToLower(); break }
+    }
+    if (-not $expected) {
+        Write-Host '  (manifest has no entry for lib/client.js - integrity check skipped)' -ForegroundColor DarkYellow
+        return
+    }
+    $actual = (Get-FileHash -Path $BundlePath -Algorithm SHA256).Hash.ToLower()
+    if ($actual -ne $expected) {
+        throw ("checksum mismatch for lib/client.js`n  expected $expected`n  actual   $actual`n" +
+               'The download does not match the published build - aborting without installing.')
+    }
+    Write-Host "  integrity OK (sha256 $($actual.Substring(0, 12))...)" -ForegroundColor Green
+}
+
 if (-not $DshHome) { $DshHome = Join-Path $env:USERPROFILE '.dsh' }
 if (-not (Test-Path $DshHome)) { throw "DSH home not found: $DshHome (override with -DshHome)" }
 
-$plugin      = '@zhubai0528/dsh-client-ui-aqua'
+$plugin      = '@zhubai0528/dsh-client-ui-aqua-community-fix'
 $nodeModules = Join-Path $DshHome 'profiles\node_modules'
 $linkPath    = Join-Path $nodeModules $plugin
 $patchFile   = Join-Path $DshHome "profiles\$Profile\cordis.patch.yml"
@@ -46,13 +102,15 @@ Write-Host '[1/3] Getting plugin source...' -ForegroundColor Cyan
 $isRemote = $Source -match '^(https?://|git@|ssh://|github:)'
 if ($isRemote) {
     $repoUrl = $Source.TrimEnd('/').TrimEnd('.git')
+    # owner/repo slug, used for the release API and the checksum manifest.
+    $slug = $null
+    if ($repoUrl -match '^https?://github\.com/([^/]+/[^/]+)') { $slug = $Matches[1] }
 
     # Resolve the ref: 'latest' -> the newest release tag via the GitHub API;
     # a version-looking string (v1.2.3) is a tag; anything else is a branch.
     $ref = $Version
     $isTag = $ref -match '^v\d+\.\d+'
-    if ($ref -eq 'latest' -and $repoUrl -match '^https?://github\.com/([^/]+/[^/]+)') {
-        $slug = $Matches[1]
+    if ($ref -eq 'latest' -and $slug) {
         try {
             $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$slug/releases/latest" -Headers @{ 'User-Agent' = 'dsh-aqua-installer' } -TimeoutSec 15
             if ($latest.tag_name) {
@@ -108,6 +166,30 @@ if ($isRemote) {
 if (-not (Test-Path (Join-Path $src 'lib\client.js'))) {
     throw "lib\client.js not found - the repo must include the pre-built bundle. dir: $src"
 }
+if ($isRemote -and $slug) {
+    Test-BundleChecksum -BundlePath (Join-Path $src 'lib\client.js') -Slug $slug -Ref $ref
+}
+
+# ---------- 1b. drop a stale legacy-name install ----------
+# The package was published as `@zhubai0528/dsh-client-ui-aqua` before the
+# "community fix" rename. Leaving that junction in place would register the
+# same plugin id (ui-aqua) twice and make the loader refuse the roster.
+$legacyName = '@zhubai0528/dsh-client-ui-aqua'
+$legacyDirs = @(
+    (Join-Path $DshHome ('profiles\\node_modules\\' + $legacyName)),
+    (Join-Path $DshHome ('profiles\\' + $Profile + '\\node_modules\\' + $legacyName))
+)
+foreach ($legacy in $legacyDirs) {
+    if (-not (Test-Path $legacy)) { continue }
+    $item = Get-Item $legacy -Force
+    if ($item.LinkType) {
+        # Delete the junction itself, never its target (-Recurse would follow it).
+        [System.IO.Directory]::Delete($legacy)
+    } else {
+        Remove-Item $legacy -Force -Recurse
+    }
+    Write-Host "  removed legacy install: $legacy" -ForegroundColor DarkGray
+}
 
 # ---------- 2. junction ----------
 Write-Host "[2/3] Linking -> $linkPath" -ForegroundColor Cyan
@@ -130,10 +212,10 @@ Write-Host "[3/3] Registering in $patchFile" -ForegroundColor Cyan
 $entryText = @'
 - insert:
     - id: ui-aqua
-      name: '@zhubai0528/dsh-client-ui-aqua'
+      name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
 '@
 if (-not (Test-Path $patchFile)) {
-    Set-Content -Path $patchFile -Value ($entryText + "`n") -Encoding UTF8
+    Write-Utf8NoBom -Path $patchFile -Text ($entryText + "`n")
 } else {
     $content = Get-Content $patchFile -Raw
     # Match the real list entry only, not the "duplicate loader entry id: ui-aqua" comment.
@@ -142,7 +224,7 @@ if (-not (Test-Path $patchFile)) {
     } else {
         $base = ($content -replace '(?s)\[\s*\]\s*$', '').TrimEnd()
         if ($base -eq '') { $new = $entryText + "`n" } else { $new = $base + "`n`n" + $entryText + "`n" }
-        Set-Content -Path $patchFile -Value $new -Encoding UTF8
+        Write-Utf8NoBom -Path $patchFile -Text $new
     }
 }
 

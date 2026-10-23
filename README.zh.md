@@ -4,6 +4,22 @@
 
 > **上游说明**：本包基于原作者 **WYH66666666** 的 [DSH-Transparent-UI-Plugin](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin)（npm 上的 `dsh-client-ui-aqua`）**v1.3.0** 源码继续维护。原作者声明因学业繁忙无法及时适配 DSH 新 API，本版本在其基础上修复与适配，**不保证**与未来 DSH 版本兼容——升级 DSH 前请先备份 profile。
 
+## 支持的 DSH 版本
+
+| 项 | 内容 |
+|---|---|
+| **DSH 桌面端 / 网页端** | **V0.2.1-rc.2** |
+| 宿主客户端包 | `@deepseek-ai/dsh-client-*` **0.2.1-rc.2** |
+| 元数据声明 | `package.json` → `engines.dsh: ">=0.2.1-rc.2 <0.3.0"` |
+
+**V0.2.1-rc.2 是本版本构建与验证所依据的版本** —— 主题所依赖的挂载点取自该版本宿主（页头标记、输入区与统计栏接缝、插槽名）。这些都是宿主的内部客户端接口，因此升级 DSH 有可能在不改动本插件的情况下导致外观或挂载异常。使用其它 DSH 版本时请视为不受支持，并保留 profile 备份。
+
+## 标签与社区收录
+
+仓库已打上 `dsh-plugin` 标签，会出现在 [dsh-plugin 社区主题页](https://github.com/topics/dsh-plugin)，与其它 DeepSeek Harness 插件并列。
+
+`dsh-plugin` · `dsh` · `deepseek-harness` · `deepseek-harness-plugin` · `theme` · `glassmorphism` · `aqua`
+
 ## 来源与致谢
 
 | 项 | 内容 |
@@ -12,8 +28,9 @@
 | 上游 npm 包 | `dsh-client-ui-aqua`（最新 1.3.1） |
 | 本包基线 | 上游 **v1.3.0** 源码 |
 | 本包维护 | **ZHUBAI0528** — [仓库](https://github.com/ZHUBAI0528/dsh-client-ui-aqua) |
-| 本包 npm 包名 | `@zhubai0528/dsh-client-ui-aqua` |
-| 本包版本 | **2.0.0**（自该版本起独立演进） |
+| 本包 npm 包名 | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
+| 本包版本 | **2.1.0**（自该版本起独立演进） |
+| **DSH 支持版本** | **V0.2.1-rc.2** |
 | 许可 | **AGPL-3.0**（沿用上游 `LICENSE`，原版权与许可声明完整保留） |
 
 Aqua 是一层高自由度的玻璃质感主题，套在 DeepSeek Harness 网页端与桌面端。顶栏、输入框与状态栏、轨迹视图等区域成为磨砂玻璃片，主内容区背后可以是流体板，也可以是自定义壁纸（图片或视频）；侧边栏保持原生外观。关掉开关就回到原生界面，不改 DSH 任何一行源码。
@@ -46,10 +63,14 @@ Aqua 是一层高自由度的玻璃质感主题，套在 DeepSeek Harness 网页
 ## 特性（当前版本）
 
 - **云母玻璃布局**：顶栏、输入框、状态栏、轨迹视图为悬浮玻璃，模糊度与磨砂度可调
+- **主题控制面板**：颜色、壁纸、不透明度、模糊度等参数集中在一页，不必各处翻找
+- **输入框取消 3D 效果**：3D 立体效果已移除，避免影响字体显示
 - **背景自由**：流体板（色调、颜色深浅可调）或自定义壁纸，图片与视频都支持；壁纸可单独调节模糊度、磨砂度，视频另有亮度档
+- **跟随桌面端深浅模式**：自动适配桌面端浅色/深色切换，同步重算调色板、辉光与亮度方向
 - **背景亮度**：自动跟随深浅模式——深色 0–50 压暗、浅色 50–100 提亮，50 原样
 - **会话区不透明度**：0 让壁纸/流体原样透出，100 为不透明底板
 - **子菜单不透明度**：弹层（菜单、下拉、快速调用面板）的填充强度，独立于卡片
+- **子菜单显示优化**：弹层填充提升至 96% 并叠加模糊，多级菜单始终清晰浮于正文之上
 - **子菜单交互 → 点击保持展开**：悬停展开的子菜单在被点击时保持展开，再点一次收起
 - **环境装饰**：粒子鲸鱼（deepseek.com/harness 同款）、小鱼、网状交互，可分别开关
 - **悬停效果 → 鼠标辉光**：指针附近的高光跟随
@@ -59,12 +80,12 @@ Aqua 是一层高自由度的玻璃质感主题，套在 DeepSeek Harness 网页
 
 ## 安装
 
-> 上游包 `dsh-client-ui-aqua` 与本包 `@zhubai0528/dsh-client-ui-aqua` **不要同时安装**，否则 profile 里会出现两个 `ui-aqua` 条目。
+> 上游包 `dsh-client-ui-aqua` 与本包 `@zhubai0528/dsh-client-ui-aqua-community-fix` **不要同时安装**，否则 profile 里会出现两个 `ui-aqua` 条目。
 
 ### 方式一：npm 一键安装（推荐）
 
 ```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
 从 npm 安装最新版，自动注册为 profile 插件层（`dsh.bundle` 补丁），所有平台通用。刷新界面即可生效。
@@ -85,7 +106,7 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.c
 
 ```sh
 git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git
-ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua"
+ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
 ```
 
 然后往 `$DSH_HOME/profiles/web/cordis.patch.yml` 追加：
@@ -93,7 +114,7 @@ ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528
 ```yaml
 - insert:
     - id: ui-aqua
-      name: '@zhubai0528/dsh-client-ui-aqua'
+      name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
 ```
 
 ## 使用

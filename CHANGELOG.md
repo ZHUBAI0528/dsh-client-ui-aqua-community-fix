@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.1.0 (2026-10-23)
+
+**适配 DSH 桌面端 V0.2.1-rc.2**，并按该版本宿主实际渲染的标记重做页头与接缝处理。
+
+### 视觉统一（页头 / 接缝 / 宽度）
+
+- 页头统一：宿主两套页头标记都纳入卡片配方 —— `ui-plugin-manager` 是 `<header class="pageHead">`，`ui-schedule`（自动化任务）是 `<div class="pageHeading"><h1>…`。此前只匹配 `<header>`，所以自动化任务页顶栏是裸文字行，与插件页不一致。两条已合并为同一组选择器（`[class*='pageHead']` 同时命中两种类名）
+- 顶栏宽度：页头卡片取消左右 16px 外边距，与内容列同宽（此前比内容窄 32px）；会话区顶栏保留 16px 槽，因为它要对齐输入框卡片而不是页面
+- 接缝模糊改为「只糊沟槽」：两条 `data-dsh-aqua-seam` 带严格限定在页面边界与浮动玻璃之间 —— `top` 从页面上边界到顶栏卡片上沿，`foot` 从统计栏底边（含圆弧）到页面下边界。均为 `position: fixed` + 纯 `backdrop-filter`，无染色、无遮罩、无渐隐
+- 移除前几版压在会话内容上的两条 40px 染色带（顶栏下方、输入区上方）。它们在消息流上形成一条亮色横带，遮住首行文字的上半部分，反而是新的分割缺陷；玻璃本身在那些位置已有干净边缘，不需要再叠一层
+- 统计栏圆弧底边保持原样：`foot` 带无填充、宽度取自统计栏自身、位于玻璃之下（z-index 7 < 8），只在底边切线上收 1px 接缝
+- 会话区启动时序：接缝测量在挂载时可能早于会话区渲染，增加 6 次有界补测（120ms→4s 后自停），避免必须 resize 窗口才出现
+- 修复：插件页顶栏内部多出一层圆角小框。宿主把 `pageHeading` 嵌在 `pageHead` 内部（`<header class="pageHead"><div class="pageHeading"><h1>`），子串钩子把两层都当成页头、各画了一张卡；内层已重置为纯文本块（`content: none` + 去内外边距）
+- 侧栏折叠时只有会话区顶栏右移 28px，页头卡片不再跟着偏移（否则会与页内内容错位）
+
+### 审计修复
+
+以「行为与宿主页面回落一致」为准，不改变主题的视觉语言。
+
+- 性能：三处全文档 `MutationObserver`（接缝盖章、辉光挂载、词标徽章）合并为一个共享的 DOM 变更源 `src/client/dom-feed.ts`，回调按帧合并，引用计数归零即摘除观察器。此前每条流式消息都会触发三轮全文档查询（其中一轮含 `*:has(...)`）
+- 兼容性：页头玻璃卡的 `header` 规则收窄到主列（`[data-dsh-center] header` / `[class*='centerCol'] header`）。此前该规则是裸元素选择器，会改写任何插件渲染的 `<header>`（含挂到 `body` 的弹窗内页头）
+- 行为一致性：关闭玻璃主题时一并释放「子菜单点击保持展开」补丁。该补丁修改的是点击行为而非外观，此前关掉主题后仍生效，且面板隐藏旋钮导致无法关闭
+- 隐私：新增 `deleteVideoHandle()`，删除/更换壁纸时一并清除 IndexedDB 中记住的本地文件授权句柄（此前会永久残留）
+- 供应链：`npm run bundle` 生成 `SHA256SUMS.txt`（覆盖 `lib/client.js`）；`install.ps1` 按同 ref 的清单校验，缺失时跳过并告警，不匹配时中止安装。Release 附件补充该清单
+- 文档：修正 `install.ps1` 头部 npm 安装命令缺失的包名
+
 ## v2.0.0
 
 破坏性版本：兼容模式与其切换入口已移除，主题恒为云母（浮动玻璃）布局。
@@ -15,7 +41,7 @@
 - 修复：输入框卡片与其下方状态栏之间的 6px 缝隙（合并为一块连续玻璃）
 - 发布配置：`files` 补上 `cordis.patch.yml`（此前发布包缺失该文件，安装后插件不会加载）；peer 依赖范围放宽为 `>=0.1.0-rc.5 <0.3.0` 以兼容 0.2.x 宿主；新增 `typecheck` 脚本
 - 移除「悬停下压」（3D 倾斜）及其存储键：滚动时的抖动来源之一，功能已废弃
-- 更名：包名改为 `@zhubai0528/dsh-client-ui-aqua`，仓库迁至 `github.com/ZHUBAI0528/dsh-client-ui-aqua`；插件 id 仍为 `ui-aqua`，localStorage 键（`dsh.ui-aqua.*`）不变，老用户设置原样沿用
+- 更名：包名改为 `@zhubai0528/dsh-client-ui-aqua-community-fix`，仓库迁至 `github.com/ZHUBAI0528/dsh-client-ui-aqua`；插件 id 仍为 `ui-aqua`，localStorage 键（`dsh.ui-aqua.*`）不变，老用户设置原样沿用
 - 许可对齐：`package.json` 由 MIT 更正为 **AGPL-3.0**，与仓库 `LICENSE` 一致（此前自相矛盾）
 - 发布脚本：`prepublishOnly` 改为 `npm run bundle`（本机无全局 pnpm）；`publish.ps1` 改为薄封装，不再重写包名/描述，删除失效的 `build.ps1`
 - 文档：中英双版逐节对齐重写，新增「来源与致谢」「本地开发」「许可」，截图统一为 1380×600

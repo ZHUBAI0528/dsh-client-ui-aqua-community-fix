@@ -14,6 +14,7 @@
  * (the whole stylesheet is gated on it), so they are simply left in place when
  * the layer flips off — "off" still renders the exact stock UI.
  */
+import { subscribeDomMutations } from './dom-feed.ts'
 
 interface Seam {
   /** Attribute to stamp (bare name; value is always ''). */
@@ -77,11 +78,15 @@ function stampAll(): void {
 
 /**
  * Stamp the seams once, then keep them stamped as React remounts nodes.
- * @returns a disposer that disconnects the observer.
+ *
+ * The re-stamp rides the plugin's shared DOM feed (see `dom-feed.ts`) instead
+ * of a private document-wide observer: this pass queries 13 selectors over the
+ * whole document, one of them `*:has(...)`, so running it once per frame — not
+ * once per streamed message — is the difference between idle and jank.
+ *
+ * @returns a disposer that drops the subscription.
  */
 export function startSeamStamper(): () => void {
   stampAll()
-  const observer = new MutationObserver(() => { stampAll() })
-  observer.observe(document.documentElement, { childList: true, subtree: true })
-  return () => { observer.disconnect() }
+  return subscribeDomMutations(stampAll)
 }

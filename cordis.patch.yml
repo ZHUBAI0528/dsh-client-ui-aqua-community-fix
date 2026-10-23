@@ -4,4 +4,4 @@
 # package by its real (scoped) name.
 - insert:
     - id: ui-aqua
-      name: "@zhubai0528/dsh-client-ui-aqua"
+      name: "@zhubai0528/dsh-client-ui-aqua-community-fix"
