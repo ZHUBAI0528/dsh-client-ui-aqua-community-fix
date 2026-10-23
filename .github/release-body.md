@@ -1,21 +1,29 @@
-## Aqua 玻璃主题 v2.1.0 — 适配 DSH V0.2.1-rc.2
+## Aqua 玻璃主题 v2.1.1 — 类型收敛补丁（适配 DSH V0.2.1-rc.2）
 
-本版本以 **DSH 桌面端 V0.2.1-rc.2** 为基准构建与验证（`engines.dsh` 同步声明 `>=0.2.1-rc.2 <0.3.0`）。
+**运行时行为与 2.1.0 等价**，本版只做三件事：把 `tsc --noEmit` 从 14 条清零、把图标名对齐到宿主真实可解析的名字、清掉三个未使用的依赖。
 
-### 视觉统一
+### 关键更正：图标名以宿主运行时为准
 
-- 页头卡片统一：宿主同一功能用了两套标记 —— 插件页是 `<header class="pageHead">`，自动化任务页是 `<div class="pageHeading">`。现已合并为同一组选择器，两页顶栏外观一致
-- 页头卡片宽度对齐内容列（此前左右各内缩 16px，比内容窄 32px）；会话区顶栏保留 16px 槽以对齐输入框
-- 修复插件页顶栏内部多出一层圆角小框（`pageHeading` 嵌在 `pageHead` 内，两层各画了一张卡）
-- 接缝模糊改为「只糊沟槽」：`top` 从页面上边界到顶栏卡片上沿，`foot` 从统计栏底边到页面下边界。均为纯 `backdrop-filter`，无染色、无遮罩；统计栏圆弧底边不受影响
+开发依赖原本解析到 `primitives@0.1.0-rc.8`，该版本把图标改名成了 `16` 后缀（`IconCheckOutline16` / `IconSparkle16`）。而宿主 **DSH V0.2.1-rc.2** 运行时只解析 `IconCheckOutlineRegular` / `IconSparkleRegular`。
 
-### 审计修复
+取证（扫描宿主 `app.asar`）：`·Regular` 命中 **18 次**，分布在 13 个官方 UI 插件与前端 bundle；`·16` 命中 **0 次**。
 
-- 性能：三处全文档 `MutationObserver` 合并为一个共享 DOM 变更源，回调按帧合并，引用计数归零即摘除
-- 兼容性：页头玻璃卡规则收窄到主列，不再改写其它插件渲染的 `<header>`
-- 行为一致性：关闭主题时一并释放「子菜单点击保持展开」补丁
-- 隐私：删除/更换壁纸时清除 IndexedDB 中记住的本地文件授权句柄
-- 供应链：`npm run bundle` 生成 `SHA256SUMS.txt`；`install.ps1` 按同 ref 校验，缺失告警跳过、不匹配中止
+因此**按类型声明去改源码会让面板白屏**（`jsx(undefined)`）。本版把开发依赖钉到宿主同版 `0.2.1-rc.2`，源码保持运行时真实名字，peer 范围同步收紧为 `>=0.2.1-rc.2 <0.3.0` —— 宽范围会同时放行两版，而两版图标名互不兼容，等于允许装出一个白屏组合。
+
+### 类型修复
+
+- `@deepseek-ai/dsh-client-store`（平台种子词）：声明文件原把 `export function` 写在顶层，说明符始终解析不到；改为整体包进 `declare module`，形状与宿主 `StoreSpec` / `StoreHandle` / `StoreInstance` 逐成员一致
+- 槽位契约：新增 `src/slot-contract.d.ts`，向 `SlotMap` 合并 `sidebar.panellist`（root list）与 `main`（root keyed），形状取自宿主自带文档
+- `FileSystemHandle.queryPermission` / `requestPermission`：新增 `src/fs-access.d.ts`（Chromium 已提供，TypeScript 的 `lib.dom` 未收录）
+- 面板页 props 移除多余的 actions 契约；`showOpenFilePicker` 绑定局部变量并判空
+
+### 依赖清理
+
+移除 `dsh-client-ui-settings`、`dsh-client-ui-settings-plugins`（源码零引用）与 `dsh-client-test-runtime`（本仓库无测试脚本）。
+
+### 产物
+
+`lib/client.js` 相对 2.1.0 净差 **6 增 3 删**，全部落在 picker 判空处；图标名、模块 `require`、CSS 完全一致。
 
 安装：
 
@@ -27,24 +35,32 @@ dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 
 ---
 
-## Aqua glass theme v2.1.0 — for DSH V0.2.1-rc.2
+## Aqua glass theme v2.1.1 — type-convergence patch (for DSH V0.2.1-rc.2)
 
-Built and verified against **DSH desktop V0.2.1-rc.2** (`engines.dsh: ">=0.2.1-rc.2 <0.3.0"`).
+**Runtime behaviour is equivalent to 2.1.0.** This release does three things: clears all 14 `tsc --noEmit` errors, aligns the glyph names to the ones the host actually resolves, and drops three unused dependencies.
 
-### Visual unification
+### Correction: glyph names follow the host runtime
 
-- One page-head card contract for both host shapes: `<header class="pageHead">` (plugins page) and `<div class="pageHeading">` (automation tasks) now share a single selector group
-- Page-head card spans the content column (it used to be 32px narrower); the chat header keeps its 16px gutter so it agrees with the composer
-- Fixed the extra rounded box drawn inside the plugins page head (`pageHeading` is nested in `pageHead`, so both levels rendered a card)
-- Seam blur now covers the gutters only — page boundary → header card top, and statistics dock bottom → page bottom. Plain `backdrop-filter`, no tint, no mask; the dock's rounded bottom edge is untouched
+The dev dependency resolved to `primitives@0.1.0-rc.8`, which renamed the glyphs to a `16` suffix (`IconCheckOutline16` / `IconSparkle16`). The host — **DSH V0.2.1-rc.2** — resolves only `IconCheckOutlineRegular` / `IconSparkleRegular`.
 
-### Audit fixes
+Evidence (scanning the host `app.asar`): the `Regular` names occur **18 times** across 13 shipped UI plugins and the frontend bundle; the `16` names occur **0 times**.
 
-- Perf: three document-wide `MutationObserver`s merged into one shared, frame-coalesced DOM feed
-- Compatibility: the page-head glass rule is scoped to the main column instead of every `<header>` in the document
-- Behaviour: turning the theme off now releases the submenu click-hold shim
-- Privacy: the remembered file handle is dropped when the wallpaper is removed or replaced
-- Supply chain: `npm run bundle` writes `SHA256SUMS.txt`; `install.ps1` verifies `lib/client.js` against it (warn-and-skip when absent, abort on mismatch)
+Editing the source to match the typings would therefore render `jsx(undefined)` and blank the panel. This release pins the dev dependency to the host's own `0.2.1-rc.2`, keeps the runtime names in source, and tightens the peer range to `>=0.2.1-rc.2 <0.3.0` — the wide range admitted both versions, whose glyph names are mutually incompatible.
+
+### Type fixes
+
+- `@deepseek-ai/dsh-client-store` (platform seed word): the ambient file declared `export function` at the top level, so the specifier never resolved; the surface now lives inside `declare module` and mirrors the host's `StoreSpec` / `StoreHandle` / `StoreInstance` member for member
+- Slot contracts: new `src/slot-contract.d.ts` augments `SlotMap` with `sidebar.panellist` (root list) and `main` (root keyed), shapes taken from the host's own docs
+- `FileSystemHandle.queryPermission` / `requestPermission`: new `src/fs-access.d.ts` (shipped by Chromium, missing from `lib.dom`)
+- The panel page no longer requires the store's baked actions; `showOpenFilePicker` is bound to a local and null-checked
+
+### Dependency cleanup
+
+Removed `dsh-client-ui-settings`, `dsh-client-ui-settings-plugins` (zero source references) and `dsh-client-test-runtime` (this repo has no test script).
+
+### Artifact
+
+`lib/client.js` differs from 2.1.0 by **6 added / 3 removed** lines, all in the picker guard; glyph names, module `require`s and CSS are unchanged.
 
 Install:
 

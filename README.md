@@ -57,7 +57,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 | Scheme switching | switching to dark left the backdrop light until a knob was touched | **Fixed**: the layer watches `body[data-ds-dark-theme]` and recomputes the fluid palette, glow tone and brightness direction |
 | Cold-start fluid | a GPU that was not ready permanently disabled the canvas (all-white in light mode) | **Fixed**: retried with backoff (up to 8 attempts, ~12s) |
 | Published tarball | `files` omitted `cordis.patch.yml`, so installs never loaded | **Fixed**: the tarball ships `cordis.patch.yml` and `lib/*` |
-| Dependency range | peer `^0.1.0-rc.5` (mismatched a 0.2.x host) | `>=0.1.0-rc.5 <0.3.0`, accepting 0.1.x and 0.2.x hosts |
+| Dependency range | peer `^0.1.0-rc.5` (mismatched a 0.2.x host) | `>=0.2.1-rc.2 <0.3.0`, pinned to the host line the theme is built against |
 | Licence statement | repo `LICENSE` is AGPL-3.0 while `package.json` said MIT | **Aligned**: both now declare AGPL-3.0 |
 
 ## Features (current)

@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.1.1 (2026-10-23)
+
+**类型层收敛，运行时行为与 2.1.0 等价。** 这一版把 `npm run typecheck` 从 14 条既有错误清零，并清除两个潜在的安装期问题。
+
+### 依赖更正：图标名以宿主运行时为准
+
+- `@deepseek-ai/dsh-client-ui-primitives` 的开发依赖原本解析到 `0.1.0-rc.8`，该版本把图标改名成了 `16` 后缀（`IconCheckOutline16` / `IconSparkle16`）。但宿主 DSH V0.2.1-rc.2 运行时只解析 `IconCheckOutlineRegular` / `IconSparkleRegular` —— 扫描 `app.asar` 证实：旧名出现 18 次、分布在 13 个官方 UI 插件与前端 bundle，新名一次都不存在
+- 因此**按类型声明改代码会把运行时改成宿主无法解析的名字**（`jsx(undefined)`，面板白屏）。本版把开发依赖钉到宿主同版 `0.2.1-rc.2`，源码保持运行时真实名字
+- peer 范围由 `>=0.1.0-rc.5 <0.3.0` 收紧为 `>=0.2.1-rc.2 <0.3.0`。宽范围会同时放行两版，而两版的图标名互不兼容 —— 等于允许安装出一个白屏组合
+
+### 类型修复（均修在根因，未用 `as any` 掩盖）
+
+- **平台种子词 `@deepseek-ai/dsh-client-store`**：声明文件把 `export function` 写在顶层，只声明了「本文件的模块」，说明符始终解析不到（TS2307）。改为整体包进 `declare module`，形状与宿主 `StoreSpec` / `StoreHandle` / `StoreInstance` 逐成员一致
+- **槽位契约**：新增 `src/slot-contract.d.ts`，向 `SlotMap` 合并 `sidebar.panellist`（root 作用域 list）与 `main`（root 作用域 keyed）。形状取自宿主自带文档，非猜测
+- **File System Access**：新增 `src/fs-access.d.ts` 补 `queryPermission` / `requestPermission`（Chromium 已提供，TypeScript 的 `lib.dom` 尚未收录）
+- **面板页 props**：移除多余的 `AquaPanelActions` 契约 —— 页面只读 store 快照，图层到 store 的回写由 inject 工厂负责
+
+### 安全与稳健
+
+- `showOpenFilePicker` 绑定到局部变量并判空。`lib.dom` 将其声明为可选，原实现依赖调用前的 `hasNativeFileSystemAccess()` 兜底，类型上不成立
+
+### 移除未使用的依赖
+
+- `@deepseek-ai/dsh-client-ui-settings`、`@deepseek-ai/dsh-client-ui-settings-plugins`：源码零引用，仅出现在打包排除白名单里，却作为 peer 强加给使用者
+- `@deepseek-ai/dsh-client-test-runtime`：本仓库没有测试脚本，该依赖从未被使用，且它的 peer 链会与其它版本约束打架
+
+### 产物
+
+- `lib/client.js` 相对 2.1.0 净差 6 增 3 删，全部落在 picker 判空处；图标名、模块 `require`、CSS 完全一致
+
 ## 2.1.0 (2026-10-23)
 
 **适配 DSH 桌面端 V0.2.1-rc.2**，并按该版本宿主实际渲染的标记重做页头与接缝处理。
