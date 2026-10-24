@@ -1,9 +1,13 @@
 # Aqua installer (Windows) - BACKUP method. The recommended install is the
-# npm one-liner (no account, no git, no manual steps, all platforms):
+# desktop app: left sidebar -> Plugins -> Add plugin -> enter
+#   github:zhubai0528/dsh-client-ui-aqua-community-fix
+#
+# The package is also published to npm (@zhubai0528/dsh-client-ui-aqua-community-fix),
+# so any platform with Node.js can install it in one command:
 #
 #   dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 #
-# This script is the GitHub fallback: no npm, no git required.
+# This script is the last-resort fallback: no npm, no git required.
 #
 # One command (from any directory):
 #   powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"

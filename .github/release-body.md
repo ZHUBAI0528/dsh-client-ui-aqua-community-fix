@@ -38,6 +38,18 @@
 github:zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
+本版已发布到 npm（`@zhubai0528/dsh-client-ui-aqua-community-fix@2.0.0`，公开访问），命令行一条搞定：
+
+```sh
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+
+Windows 也可用 GitHub 安装器（不需要 npm、不需要 git）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+```
+
 完整说明见 [README.zh.md](README.zh.md) / [README.md](README.md)，变更明细见 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
@@ -80,6 +92,18 @@ Install (desktop app, recommended): open DeepSeek Harness V0.2.1-rc.2 → **Plug
 
 ```
 github:zhubai0528/dsh-client-ui-aqua-community-fix
+```
+
+This version is also published to npm (`@zhubai0528/dsh-client-ui-aqua-community-fix@2.0.0`, public), so one command does it:
+
+```sh
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+
+On Windows, the GitHub installer needs neither npm nor git:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 ```
 
 See [README.md](README.md) / [README.zh.md](README.zh.md) for details and [CHANGELOG.md](CHANGELOG.md) for the full list.
