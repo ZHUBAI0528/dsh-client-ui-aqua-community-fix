@@ -67,12 +67,12 @@
   "license": "AGPL-3.0-only",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-locale": ">=0.1.0-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/dsh-client-runtime": ">=0.2.1-rc.2 <0.3.0",
     "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-slots": ">=0.1.0-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-theme": ">=0.1.0-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-invariants": ">=0.1.0-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-theme": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/dsh-invariants": ">=0.2.1-rc.2 <0.3.0",
     "react": "^18.2.0"
   },
   "devDependencies": {
