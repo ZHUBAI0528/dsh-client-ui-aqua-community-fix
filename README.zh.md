@@ -94,31 +94,40 @@ github:zhubai0528/dsh-client-ui-aqua-community-fix
 
 无需 npm、无需命令行，插件会从该 GitHub 仓库取用最新发布版。装完刷新界面即可生效。
 
-### 方式二：GitHub 安装器（备用）
+### 方式二：一键脚本（Windows）
 
-不需要 npm、不需要 git（自动退回 zip 下载）。
-
-**Windows（一条命令）：**
+脚本**默认就从 npm 安装**，等同于方式三，只是省去手敲命令，并先把历史遗留的 junction 清掉。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 ```
 
-默认安装**最新发布版**。脚本会把插件链接进 profile 的 `node_modules`，并在 `cordis.patch.yml` 里登记 `ui-aqua`（幂等，重复运行不会重复登记）。
+可选参数：
 
-> ⚠️ **用本方式装过之后，想改从 npm 安装，必须先删掉 junction。** 脚本会在 `node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix` 创建一个**目录联接**（junction）指向源码目录。只要它还在，无论从插件页还是 `dsh plugin add` 安装同一个 npm 包都会失败：
+| 参数 | 说明 |
+|---|---|
+| `-Profile desktop` | 目标 profile（默认 `web`） |
+| `-Version v2.0.1` | 固定版本（默认取 npm 上的 `latest`，会先查 registry 再 pin，避免 pnpm 的 `minimumReleaseAge` 让你装到旧版） |
+| `-DshHome <路径>` | DSH 主目录（默认 `%USERPROFILE%\.dsh`） |
+| `-Link` | **仅开发调试用**，见下 |
+
+流程：定位 `dsh` CLI → 删掉两个 profile 位置里遗留的 junction → `dsh plugin --profile <名字> add <包[@版本]>`。
+
+**`-Link` 只给开发调试用**：下载源码、按 `SHA256SUMS.txt` 校验 `lib/client.js`、在该 profile 的 `node_modules` 建 junction 指向源码，并登记 `cordis.patch.yml`。
+
+> ⚠️ **日常安装不要用 `-Link`。** junction 会让应用的文件操作直接作用到源码目录 —— 应用卸载或回滚这个「已安装的包」时，删的是源码里的文件（本仓库就因此丢过 `.git/HEAD`、`.git/config`、`.git/index`）。而且它会阻止之后任何 npm 安装：
 >
 > ```
 > [ERR_PNPM_EPERM] [importPackage ...] rename ... EPERM: operation not permitted
 > ```
 >
-> 原因是 pnpm 无法用真实目录替换一个指向其它卷的重解析点。先删链接（**只删链接，不碰源码**）：
+> pnpm 要把新解包的目录 rename 覆盖目标，而目标是跨卷重解析点，NTFS 不允许。改回 npm 只需**不带 `-Link` 再跑一次**，脚本会自动删链接（只删链接，不碰源码）。
+>
+> 手工删也行，但绝不能用递归删除（旧版工具会跟进目标目录把源码删掉）：
 >
 > ```powershell
 > cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix"
 > ```
->
-> 不要用 `Remove-Item -Recurse` —— 旧版 PowerShell 会跟进目标目录，把源码删掉。
 
 ### 方式三：npm
 

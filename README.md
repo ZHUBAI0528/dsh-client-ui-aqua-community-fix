@@ -94,31 +94,40 @@ github:zhubai0528/dsh-client-ui-aqua-community-fix
 
 No npm and no terminal needed — the plugin is pulled from that GitHub repository's latest release. Reload the UI and it is on.
 
-### Option 2: GitHub installer (fallback)
+### Option 2: one-shot script (Windows)
 
-No npm account and no git needed (falls back to a plain zip download).
-
-**Windows (one command):**
+The script **installs from npm by default**, so it is Option 3 with the typing done for you — plus it clears any stale junction left behind by an earlier link install.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 ```
 
-Installs the **latest release** by default; the script links the plugin into the profile's `node_modules` and registers `ui-aqua` in `cordis.patch.yml` (idempotent).
+Options:
 
-> ⚠️ **If you used this installer and later want the npm package, remove the junction first.** The script creates a directory **junction** at `node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix` pointing at the cloned source. While it exists, installing the same package from npm — in the Plugins page or via `dsh plugin add` — fails with:
+| Flag | Meaning |
+|---|---|
+| `-Profile desktop` | target profile (default `web`) |
+| `-Version v2.0.1` | pin a version (default: npm's `latest`; the script reads the dist-tag and pins it, because pnpm's `minimumReleaseAge` otherwise resolves to an older release) |
+| `-DshHome <path>` | DSH home (default `%USERPROFILE%\.dsh`) |
+| `-Link` | **development only**, see below |
+
+Flow: locate the `dsh` CLI, remove stale junctions in both known locations, then `dsh plugin --profile <name> add <pkg[@version]>`.
+
+**`-Link` is for development only**: it downloads the source, verifies `lib/client.js` against `SHA256SUMS.txt`, creates a junction in that profile's `node_modules` pointing at the clone, and registers `cordis.patch.yml`.
+
+> ⚠️ **Do not use `-Link` for a normal install.** A junction puts the app's file operations inside the source tree — uninstalling or rolling back the "installed package" deletes files in the real clone, which is how this repo lost `.git/HEAD`, `.git/config` and `.git/index`. It also blocks any later npm install:
 >
 > ```
 > [ERR_PNPM_EPERM] [importPackage ...] rename ... EPERM: operation not permitted
 > ```
 >
-> pnpm cannot replace a reparse point that points across volumes. Remove the link only (this never touches the clone):
+> pnpm renames the freshly unpacked directory over the target, and NTFS refuses to replace a reparse point whose data lives on another volume. To go back to npm, just **run the script again without `-Link`** — it deletes the link itself and never the source.
+>
+> Removing it by hand is fine too, but never with a recursive delete (older tooling follows into the target and would destroy the clone):
 >
 > ```powershell
 > cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix"
 > ```
->
-> Do not use `Remove-Item -Recurse` — older PowerShell follows the target and deletes the source.
 
 ### Option 3: npm
 
