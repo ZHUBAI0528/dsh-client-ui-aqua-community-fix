@@ -1,48 +1,26 @@
 # Changelog
 
-## 未发布
+## 2.0.0 (2026-10-24)
 
-### 文档与仓库名
+当前版本。本条目是**合并记录** —— 原先分散在 2.0.0、2.1.0、2.1.1 三个版本号下的全部变更统一归入 2.0.0，
+2.1.x 的标签与发布已作废。下文按主题分组，不再按旧版本号切分。
 
-- **仓库更名**：`ZHUBAI0528/dsh-client-ui-aqua` → `ZHUBAI0528/dsh-client-ui-aqua-community-fix`，与包名后缀统一。npm 包名不变（`@zhubai0528/dsh-client-ui-aqua-community-fix`），旧仓库地址由 GitHub 保留重定向
-- README（中/英）：安装章节重构 —— **桌面版应用内插件页安装**置顶为方式一（`github:zhubai0528/dsh-client-ui-aqua-community-fix`），GitHub 安装器降为方式二
-- README（中/英）：npm 安装方式标注 **「尚未发布，当前不可用」**。此前它被标为「推荐」，但本包从未发布到 npm，照做必然失败
-- README（中/英）：修正版本号 `2.1.0` → `2.1.1`；差异表列标题 `v2.0.0` → `v2.0.0 起`（那些改进始于 2.0.0，不是 2.1.1 引入）
-- 全部仓库 URL 更新：`package.json`（repository / homepage / bugs）、`install.ps1`（`-Source` 默认值、注释）、README 克隆与安装脚本地址、Linux 手动安装的 `ln -s` 目录名
+### 版本号说明
 
-## 2.1.1 (2026-10-23)
+- 版本号统一为 **2.0.0**：`package.json`、`package-lock.json`、README（中/英）、本文件、Release 正文完全一致
+- 原 `v2.1.0` / `v2.1.1` 的 git 标签与 GitHub Release 已删除；其内容（视觉统一、审计修复、类型收敛）全部并入本条目，无功能丢失
+- 本地保留 `archive/v2.1.0`、`archive/v2.1.1` 归档标签便于追溯，未推送远端
+- 插件 id 仍为 `ui-aqua`，localStorage 键（`dsh.ui-aqua.*`）不变，已有用户的设置原样沿用
 
-**类型层收敛，运行时行为与 2.1.0 等价。** 这一版把 `npm run typecheck` 从 14 条既有错误清零，并清除两个潜在的安装期问题。
+### 破坏性变更
 
-### 依赖更正：图标名以宿主运行时为准
+兼容模式与其切换入口已移除，主题恒为云母（浮动玻璃）布局。
 
-- `@deepseek-ai/dsh-client-ui-primitives` 的开发依赖原本解析到 `0.1.0-rc.8`，该版本把图标改名成了 `16` 后缀（`IconCheckOutline16` / `IconSparkle16`）。但宿主 DSH V0.2.1-rc.2 运行时只解析 `IconCheckOutlineRegular` / `IconSparkleRegular` —— 扫描 `app.asar` 证实：旧名出现 18 次、分布在 13 个官方 UI 插件与前端 bundle，新名一次都不存在
-- 因此**按类型声明改代码会把运行时改成宿主无法解析的名字**（`jsx(undefined)`，面板白屏）。本版把开发依赖钉到宿主同版 `0.2.1-rc.2`，源码保持运行时真实名字
-- peer 范围由 `>=0.1.0-rc.5 <0.3.0` 收紧为 `>=0.2.1-rc.2 <0.3.0`。宽范围会同时放行两版，而两版的图标名互不兼容 —— 等于允许安装出一个白屏组合
-
-### 类型修复（均修在根因，未用 `as any` 掩盖）
-
-- **平台种子词 `@deepseek-ai/dsh-client-store`**：声明文件把 `export function` 写在顶层，只声明了「本文件的模块」，说明符始终解析不到（TS2307）。改为整体包进 `declare module`，形状与宿主 `StoreSpec` / `StoreHandle` / `StoreInstance` 逐成员一致
-- **槽位契约**：新增 `src/slot-contract.d.ts`，向 `SlotMap` 合并 `sidebar.panellist`（root 作用域 list）与 `main`（root 作用域 keyed）。形状取自宿主自带文档，非猜测
-- **File System Access**：新增 `src/fs-access.d.ts` 补 `queryPermission` / `requestPermission`（Chromium 已提供，TypeScript 的 `lib.dom` 尚未收录）
-- **面板页 props**：移除多余的 `AquaPanelActions` 契约 —— 页面只读 store 快照，图层到 store 的回写由 inject 工厂负责
-
-### 安全与稳健
-
-- `showOpenFilePicker` 绑定到局部变量并判空。`lib.dom` 将其声明为可选，原实现依赖调用前的 `hasNativeFileSystemAccess()` 兜底，类型上不成立
-
-### 移除未使用的依赖
-
-- `@deepseek-ai/dsh-client-ui-settings`、`@deepseek-ai/dsh-client-ui-settings-plugins`：源码零引用，仅出现在打包排除白名单里，却作为 peer 强加给使用者
-- `@deepseek-ai/dsh-client-test-runtime`：本仓库没有测试脚本，该依赖从未被使用，且它的 peer 链会与其它版本约束打架
-
-### 产物
-
-- `lib/client.js` 相对 2.1.0 净差 6 增 3 删，全部落在 picker 判空处；图标名、模块 `require`、CSS 完全一致
-
-## 2.1.0 (2026-10-23)
-
-**适配 DSH 桌面端 V0.2.1-rc.2**，并按该版本宿主实际渲染的标记重做页头与接缝处理。
+- 移除「兼容模式」与「模式」切换：设置面板不再有该分组；`dsh.ui-aqua.mode` 存储键不再读取（旧值保留、不影响使用）
+- 移除上下渐变模糊带（此前表现为页面上下多出一条渐变雾面）；可读性由主列 veil 承担，13px 边缘淡出保留
+- 移除「悬停下压」（3D 倾斜）及其存储键：滚动时的抖动来源之一，功能已废弃
+- 更名：包名改为 `@zhubai0528/dsh-client-ui-aqua-community-fix`，仓库迁至 `ZHUBAI0528/dsh-client-ui-aqua`（其后仓库名进一步统一为 `dsh-client-ui-aqua-community-fix`，见「文档与仓库」）
+- 许可对齐：`package.json` 由 MIT 更正为 **AGPL-3.0**，与仓库 `LICENSE` 一致（此前自相矛盾）
 
 ### 视觉统一（页头 / 接缝 / 宽度）
 
@@ -55,6 +33,16 @@
 - 修复：插件页顶栏内部多出一层圆角小框。宿主把 `pageHeading` 嵌在 `pageHead` 内部（`<header class="pageHead"><div class="pageHeading"><h1>`），子串钩子把两层都当成页头、各画了一张卡；内层已重置为纯文本块（`content: none` + 去内外边距）
 - 侧栏折叠时只有会话区顶栏右移 28px，页头卡片不再跟着偏移（否则会与页内内容错位）
 
+### 交互与材质
+
+- 新增「子菜单不透明度」档位（默认 96%），与「会话区不透明度」同组
+- 新增「子菜单交互 → 点击保持展开」：悬停展开的子菜单在被点击时保持展开，再点一次收起；按 ARIA 契约（`aria-haspopup` + `aria-expanded`）生效，层级无关，键盘操作不受影响
+- 弹层统一加密：菜单/下拉填充提升到 96%、模糊为 `玻璃模糊度 + 4px`，避免与正文和输入框文字视觉重叠
+- 修复：浅色模式下会话区整片发白、且「会话区不透明度」失效（列的 background 被宿主/皮肤插件覆盖）——veil 改为 `!important`，并同时用 `[class*='centerCol']` 匹配，不再依赖 `data-dsh-center` 的盖章时机
+- 修复：切换到深色后主题不跟随（背景仍是浅色板、文字难辨）——改为监听 `body[data-ds-dark-theme]` 并重算流体调色板、辉光色与亮度叠加方向
+- 修复：冷启动时 GPU 尚未就绪会让流体画布永久不绘制——改为退避重试（最多 8 次，约 12s）
+- 修复：输入框卡片与其下方状态栏之间的 6px 缝隙（合并为一块连续玻璃）
+
 ### 审计修复
 
 以「行为与宿主页面回落一致」为准，不改变主题的视觉语言。
@@ -64,27 +52,35 @@
 - 行为一致性：关闭玻璃主题时一并释放「子菜单点击保持展开」补丁。该补丁修改的是点击行为而非外观，此前关掉主题后仍生效，且面板隐藏旋钮导致无法关闭
 - 隐私：新增 `deleteVideoHandle()`，删除/更换壁纸时一并清除 IndexedDB 中记住的本地文件授权句柄（此前会永久残留）
 - 供应链：`npm run bundle` 生成 `SHA256SUMS.txt`（覆盖 `lib/client.js`）；`install.ps1` 按同 ref 的清单校验，缺失时跳过并告警，不匹配时中止安装。Release 附件补充该清单
-- 文档：修正 `install.ps1` 头部 npm 安装命令缺失的包名
 
-## v2.0.0
+### 类型收敛与依赖更正
 
-破坏性版本：兼容模式与其切换入口已移除，主题恒为云母（浮动玻璃）布局。
+图标名以宿主运行时为准，而不是以本地安装的类型声明为准。
 
-- 移除「兼容模式」与「模式」切换：设置面板不再有该分组；`dsh.ui-aqua.mode` 存储键不再读取（旧值保留、不影响使用）
-- 移除上下渐变模糊带（此前表现为页面上下多出一条渐变雾面）；可读性由主列 veil 承担，13px 边缘淡出保留
-- 新增「子菜单不透明度」档位（默认 96%），与「会话区不透明度」同组
-- 新增「子菜单交互 → 点击保持展开」：悬停展开的子菜单在被点击时保持展开，再点一次收起；按 ARIA 契约（`aria-haspopup` + `aria-expanded`）生效，层级无关，键盘操作不受影响
-- 弹层统一加密：菜单/下拉填充提升到 96%、模糊为 `玻璃模糊度 + 4px`，避免与正文和输入框文字视觉重叠
-- 修复：浅色模式下会话区整片发白、且「会话区不透明度」失效（列的 background 被宿主/皮肤插件覆盖）——veil 改为 `!important`，并同时用 `[class*='centerCol']` 匹配，不再依赖 `data-dsh-center` 的盖章时机
-- 修复：切换到深色后主题不跟随（背景仍是浅色板、文字难辨）——改为监听 `body[data-ds-dark-theme]` 并重算流体调色板、辉光色与亮度叠加方向
-- 修复：冷启动时 GPU 尚未就绪会让流体画布永久不绘制——改为退避重试（最多 8 次，约 12s）
-- 修复：输入框卡片与其下方状态栏之间的 6px 缝隙（合并为一块连续玻璃）
-- 发布配置：`files` 补上 `cordis.patch.yml`（此前发布包缺失该文件，安装后插件不会加载）；peer 依赖范围放宽为 `>=0.1.0-rc.5 <0.3.0` 以兼容 0.2.x 宿主；新增 `typecheck` 脚本
-- 移除「悬停下压」（3D 倾斜）及其存储键：滚动时的抖动来源之一，功能已废弃
-- 更名：包名改为 `@zhubai0528/dsh-client-ui-aqua-community-fix`，仓库迁至 `github.com/ZHUBAI0528/dsh-client-ui-aqua`；插件 id 仍为 `ui-aqua`，localStorage 键（`dsh.ui-aqua.*`）不变，老用户设置原样沿用
-- 许可对齐：`package.json` 由 MIT 更正为 **AGPL-3.0**，与仓库 `LICENSE` 一致（此前自相矛盾）
-- 发布脚本：`prepublishOnly` 改为 `npm run bundle`（本机无全局 pnpm）；`publish.ps1` 改为薄封装，不再重写包名/描述，删除失效的 `build.ps1`
-- 文档：中英双版逐节对齐重写，新增「来源与致谢」「本地开发」「许可」，截图统一为 1380×600
+- `@deepseek-ai/dsh-client-ui-primitives` 的开发依赖原本解析到 `0.1.0-rc.8`，该版本把图标改名成了 `16` 后缀（`IconCheckOutline16` / `IconSparkle16`）。但宿主 DSH V0.2.1-rc.2 运行时只解析 `IconCheckOutlineRegular` / `IconSparkleRegular` —— 扫描 `app.asar` 证实：旧名出现 18 次、分布在 13 个官方 UI 插件与前端 bundle，新名一次都不存在
+- 因此**按类型声明改代码会把运行时改成宿主无法解析的名字**（`jsx(undefined)`，面板白屏）。开发依赖已钉到宿主同版 `0.2.1-rc.2`，源码保持运行时真实名字
+- peer 范围最终定为 `>=0.2.1-rc.2 <0.3.0`。此前放宽到 `>=0.1.0-rc.5` 的做法会同时放行两版，而两版的图标名互不兼容 —— 等于允许安装出一个白屏组合
+- **平台种子词 `@deepseek-ai/dsh-client-store`**：声明文件把 `export function` 写在顶层，只声明了「本文件的模块」，说明符始终解析不到（TS2307）。改为整体包进 `declare module`，形状与宿主 `StoreSpec` / `StoreHandle` / `StoreInstance` 逐成员一致
+- **槽位契约**：新增 `src/slot-contract.d.ts`，向 `SlotMap` 合并 `sidebar.panellist`（root 作用域 list）与 `main`（root 作用域 keyed）。形状取自宿主自带文档，非猜测
+- **File System Access**：新增 `src/fs-access.d.ts` 补 `queryPermission` / `requestPermission`（Chromium 已提供，TypeScript 的 `lib.dom` 尚未收录）
+- **面板页 props**：移除多余的 `AquaPanelActions` 契约 —— 页面只读 store 快照，图层到 store 的回写由 inject 工厂负责
+- `showOpenFilePicker` 绑定到局部变量并判空。`lib.dom` 将其声明为可选，原实现依赖调用前的 `hasNativeFileSystemAccess()` 兜底，类型上不成立
+- `npm run typecheck` 从 14 条既有错误清零；客户端产物仅多出 picker 判空 6 增 3 删，图标名、模块 `require`、CSS 不变
+- 移除未使用依赖：`dsh-client-ui-settings`、`dsh-client-ui-settings-plugins`（源码零引用，仅出现在打包排除白名单里，却作为 peer 强加给使用者）、`dsh-client-test-runtime`（本仓库没有测试脚本，且其 peer 链会与其它版本约束打架）
+
+### 发布配置
+
+- `files` 补上 `cordis.patch.yml`（此前发布包缺失该文件，安装后插件不会加载）；新增 `typecheck` 脚本
+- `prepublishOnly` 改为 `npm run bundle`（本机无全局 pnpm）；`publish.ps1` 改为薄封装，不再重写包名/描述，删除失效的 `build.ps1`
+
+### 文档与仓库
+
+- **仓库更名**：`ZHUBAI0528/dsh-client-ui-aqua` → `ZHUBAI0528/dsh-client-ui-aqua-community-fix`，与包名后缀统一。npm 包名不变，旧仓库地址由 GitHub 保留重定向
+- README（中/英）：安装章节重构 —— **桌面版应用内插件页安装**置顶为方式一（`github:zhubai0528/dsh-client-ui-aqua-community-fix`），GitHub 安装器为方式二
+- README（中/英）：npm 安装方式标注 **「尚未发布，当前不可用」**。此前它被标为「推荐」，但本包从未发布到 npm，照做必然失败
+- 全部仓库 URL 更新：`package.json`（repository / homepage / bugs）、`install.ps1`（`-Source` 默认值、注释）、README 克隆与安装脚本地址、Linux 手动安装的 `ln -s` 目录名
+- 中英双版逐节对齐重写，新增「来源与致谢」「本地开发」「许可」，截图统一为 1380×600
+- 修正 `install.ps1` 头部 npm 安装命令缺失的包名
 
 ## v1.3.0
 

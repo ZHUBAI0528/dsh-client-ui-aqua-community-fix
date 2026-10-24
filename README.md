@@ -29,7 +29,7 @@ Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin commun
 | Base of this fork | upstream **v1.3.0** sources |
 | Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
-| Version | **2.1.1** (independent since 2.0.0) |
+| Version | **2.0.0** |
 | **DSH support** | **V0.2.1-rc.2** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
@@ -45,7 +45,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ## Differences from upstream v1.3.0
 
-| Item | Upstream v1.3.0 | This package v2.0.0+ |
+| Item | Upstream v1.3.0 | This package v2.0.0 |
 |---|---|---|
 | Layout modes | **Mica + Compatibility**, switchable | **Mica only** — compatibility mode and its selector are removed (tokens and styles too) |
 | Edge blur bands | 5px gradient blur bands at the top/bottom (an upstream feature) | **Removed** — they read as an extra gradient wash over the page edges; readability is carried by the column veil instead (the 13px edge fade stays) |
