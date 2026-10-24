@@ -1,5 +1,13 @@
 # Changelog
 
+## 未发布
+
+- **`install.ps1` 默认改为从 npm 安装**，junction 方式降级为显式的 `-Link` 开关（仅供开发调试）。原脚本只做源码链接，而 junction 会让应用的文件操作落到源码目录里，并且从此阻止同一个包的 npm 安装 —— pnpm 要把新解包的目录 rename 覆盖目标，而目标是跨卷重解析点，NTFS 拒绝，报 `ERR_PNPM_EPERM`
+- **修掉三个 bug**：① junction 路径写成 `profiles\node_modules`，DSH 实际用 `profiles\<profile>\node_modules`（前者在本机甚至不存在，等于装不到正确位置）；② `-DshHome` 未透传给 CLI —— CLI 从环境变量解析自己的 home，导致脚本检查的路径与实际安装位置不一致；③ 默认 `latest` 会装到旧版 —— pnpm 的 `minimumReleaseAge` 会跳过窗口期内的新发布，现改为先读 npm 的 `latest` dist-tag 再 pin 版本，pnpm 会为被 pin 的版本自动追加豁免条目
+- **安装前自动清理遗留 junction**：检查 `profiles\node_modules` 与 `profiles\<profile>\node_modules` 两处、含改名前的旧包名。清理前断言重解析点属性，只删链接、绝不跟随目标，真实 npm 目录不会被误删
+- **非法输入直接拦下**，不再半途失败：`-Version main`（npm 装不了分支，提示改用 `-Link`）、`-Source` 不带 `-Link`、profile 不存在
+- **README（中/英）方式二改写**为「一键脚本，默认 npm」，补参数表；把 junction 警告移到 `-Link` 之下，并写明真实后果 —— 应用卸载或回滚这个「已安装的包」时，删的是源码里的文件（本仓库正是因此丢过 `.git/HEAD`、`.git/config`、`.git/index`）
+
 ## 2.0.1 (2026-10-24)
 
 修正性发布，无功能变化。运行行为与 2.0.0 完全一致。
