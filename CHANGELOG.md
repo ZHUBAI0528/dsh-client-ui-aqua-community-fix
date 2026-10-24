@@ -70,6 +70,7 @@
 
 ### 发布配置
 
+- **已发布到 npm**：`@zhubai0528/dsh-client-ui-aqua-community-fix@2.0.0`，公开访问（`publishConfig.access: public`）。`dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix` 现在可用；README 中英双版相应去掉「尚未发布，当前不可用」的警告
 - `files` 补上 `cordis.patch.yml`（此前发布包缺失该文件，安装后插件不会加载）；新增 `typecheck` 脚本
 - `prepublishOnly` 改为 `npm run bundle`（本机无全局 pnpm）；`publish.ps1` 改为薄封装，不再重写包名/描述，删除失效的 `build.ps1`
 
@@ -77,7 +78,7 @@
 
 - **仓库更名**：`ZHUBAI0528/dsh-client-ui-aqua` → `ZHUBAI0528/dsh-client-ui-aqua-community-fix`，与包名后缀统一。npm 包名不变，旧仓库地址由 GitHub 保留重定向
 - README（中/英）：安装章节重构 —— **桌面版应用内插件页安装**置顶为方式一（`github:zhubai0528/dsh-client-ui-aqua-community-fix`），GitHub 安装器为方式二
-- README（中/英）：npm 安装方式标注 **「尚未发布，当前不可用」**。此前它被标为「推荐」，但本包从未发布到 npm，照做必然失败
+- README（中/英）：npm 安装方式曾标注 **「尚未发布，当前不可用」** —— 此前它被标为「推荐」，但包当时确实不在 npm 上，照做必然失败。本版发布到 npm 后该标记已移除，见「发布配置」
 - 全部仓库 URL 更新：`package.json`（repository / homepage / bugs）、`install.ps1`（`-Source` 默认值、注释）、README 克隆与安装脚本地址、Linux 手动安装的 `ln -s` 目录名
 - 中英双版逐节对齐重写，新增「来源与致谢」「本地开发」「许可」，截图统一为 1380×600
 - 修正 `install.ps1` 头部 npm 安装命令缺失的包名

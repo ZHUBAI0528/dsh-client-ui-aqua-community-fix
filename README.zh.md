@@ -106,15 +106,17 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.c
 
 默认安装**最新发布版**。脚本会把插件链接进 profile 的 `node_modules`，并在 `cordis.patch.yml` 里登记 `ui-aqua`（幂等，重复运行不会重复登记）。
 
-### 方式三：npm（尚未发布，当前不可用）
-
-> ⚠️ 本包**尚未发布到 npm**，下面这条命令现在会失败。保留仅为记录 npm 渠道的预留形态，发布后再启用。
+### 方式三：npm
 
 ```sh
 dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
-发布后将从 npm 安装最新版，自动注册为 profile 插件层（`dsh.bundle` 补丁），所有平台通用。
+从 npm 安装最新版，自动注册为 profile 插件层（`dsh.bundle` 补丁），所有平台通用。刷新界面即可生效。
+
+包的 npm 页面：<https://www.npmjs.com/package/@zhubai0528/dsh-client-ui-aqua-community-fix>
+
+> 需要本机已装 Node.js 与 npm。若访问 npm 官方源较慢，可临时指定镜像安装；注意镜像的同步有延迟，刚发布的版本可能尚未同步。
 
 ### 方式四：手动（macOS / Linux）
 

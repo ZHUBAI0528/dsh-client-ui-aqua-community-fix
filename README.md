@@ -106,15 +106,17 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.c
 
 Installs the **latest release** by default; the script links the plugin into the profile's `node_modules` and registers `ui-aqua` in `cordis.patch.yml` (idempotent).
 
-### Option 3: npm (not published yet — unavailable)
-
-> ⚠️ This package is **not published to npm**, so the command below fails today. It is kept only to document the npm channel for later.
+### Option 3: npm
 
 ```sh
 dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
-Once published, it installs the latest version from npm and registers it as a profile plugin layer (`dsh.bundle` patch) on every platform.
+Installs the latest version from npm and registers it as a profile plugin layer (`dsh.bundle` patch) on every platform. Reload the UI and it is on.
+
+npm page: <https://www.npmjs.com/package/@zhubai0528/dsh-client-ui-aqua-community-fix>
+
+> Requires Node.js and npm locally. If the official registry is slow from your network, a mirror can be used; note that mirror sync lags behind, so a just-published version may not be there yet.
 
 ### Option 4: manual (macOS / Linux)
 
