@@ -1,5 +1,15 @@
 # Changelog
 
+## 未发布
+
+### 文档与仓库名
+
+- **仓库更名**：`ZHUBAI0528/dsh-client-ui-aqua` → `ZHUBAI0528/dsh-client-ui-aqua-community-fix`，与包名后缀统一。npm 包名不变（`@zhubai0528/dsh-client-ui-aqua-community-fix`），旧仓库地址由 GitHub 保留重定向
+- README（中/英）：安装章节重构 —— **桌面版应用内插件页安装**置顶为方式一（`github:zhubai0528/dsh-client-ui-aqua-community-fix`），GitHub 安装器降为方式二
+- README（中/英）：npm 安装方式标注 **「尚未发布，当前不可用」**。此前它被标为「推荐」，但本包从未发布到 npm，照做必然失败
+- README（中/英）：修正版本号 `2.1.0` → `2.1.1`；差异表列标题 `v2.0.0` → `v2.0.0 起`（那些改进始于 2.0.0，不是 2.1.1 引入）
+- 全部仓库 URL 更新：`package.json`（repository / homepage / bugs）、`install.ps1`（`-Source` 默认值、注释）、README 克隆与安装脚本地址、Linux 手动安装的 `ln -s` 目录名
+
 ## 2.1.1 (2026-10-23)
 
 **类型层收敛，运行时行为与 2.1.0 等价。** 这一版把 `npm run typecheck` 从 14 条既有错误清零，并清除两个潜在的安装期问题。

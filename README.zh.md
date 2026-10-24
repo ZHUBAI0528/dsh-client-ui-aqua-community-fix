@@ -27,9 +27,9 @@
 | 原作者 | **WYH66666666** — [仓库](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin) |
 | 上游 npm 包 | `dsh-client-ui-aqua`（最新 1.3.1） |
 | 本包基线 | 上游 **v1.3.0** 源码 |
-| 本包维护 | **ZHUBAI0528** — [仓库](https://github.com/ZHUBAI0528/dsh-client-ui-aqua) |
+| 本包维护 | **ZHUBAI0528** — [仓库](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | 本包 npm 包名 | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
-| 本包版本 | **2.1.0**（自该版本起独立演进） |
+| 本包版本 | **2.1.1**（自 2.0.0 起独立演进） |
 | **DSH 支持版本** | **V0.2.1-rc.2** |
 | 许可 | **AGPL-3.0**（沿用上游 `LICENSE`，原版权与许可声明完整保留） |
 
@@ -45,7 +45,7 @@ Aqua 是一层高自由度的玻璃质感主题，套在 DeepSeek Harness 网页
 
 ## 与上游 v1.3.0 的差异
 
-| 项 | 上游 v1.3.0 | 本包 v2.0.0 |
+| 项 | 上游 v1.3.0 | 本包 v2.0.0 起 |
 |---|---|---|
 | 布局模式 | **云母 + 兼容** 双模式，可切换 | **仅云母**：兼容模式与其切换入口整体移除（含底层 token 与样式） |
 | 边缘渐变模糊带 | 顶部/底部 5px 渐变模糊带（上游特性） | **已移除**：读取时会被误看成一层额外渐变wash；可读性改由主列 veil 承担（13px 极窄边缘淡出保留） |
@@ -82,13 +82,17 @@ Aqua 是一层高自由度的玻璃质感主题，套在 DeepSeek Harness 网页
 
 > 上游包 `dsh-client-ui-aqua` 与本包 `@zhubai0528/dsh-client-ui-aqua-community-fix` **不要同时安装**，否则 profile 里会出现两个 `ui-aqua` 条目。
 
-### 方式一：npm 一键安装（推荐）
+### 方式一：桌面版 — 应用内插件页安装（推荐）
 
-```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+打开 **DeepSeek Harness 0.2.1-rc.2**，点击左侧栏的 **插件**。
+
+点击 **添加插件**，在「包名或地址」中填入：
+
+```
+github:zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
-从 npm 安装最新版，自动注册为 profile 插件层（`dsh.bundle` 补丁），所有平台通用。刷新界面即可生效。
+无需 npm、无需命令行，插件会从该 GitHub 仓库取用最新发布版。装完刷新界面即可生效。
 
 ### 方式二：GitHub 安装器（备用）
 
@@ -97,16 +101,26 @@ dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
 **Windows（一条命令）：**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 ```
 
 默认安装**最新发布版**。脚本会把插件链接进 profile 的 `node_modules`，并在 `cordis.patch.yml` 里登记 `ui-aqua`（幂等，重复运行不会重复登记）。
 
-### 方式三：手动（macOS / Linux）
+### 方式三：npm（尚未发布，当前不可用）
+
+> ⚠️ 本包**尚未发布到 npm**，下面这条命令现在会失败。保留仅为记录 npm 渠道的预留形态，发布后再启用。
 
 ```sh
-git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git
-ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+
+发布后将从 npm 安装最新版，自动注册为 profile 插件层（`dsh.bundle` 补丁），所有平台通用。
+
+### 方式四：手动（macOS / Linux）
+
+```sh
+git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix.git
+ln -s "$PWD/dsh-client-ui-aqua-community-fix" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
 ```
 
 然后往 `$DSH_HOME/profiles/web/cordis.patch.yml` 追加：

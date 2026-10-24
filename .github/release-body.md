@@ -25,10 +25,10 @@
 
 `lib/client.js` 相对 2.1.0 净差 **6 增 3 删**，全部落在 picker 判空处；图标名、模块 `require`、CSS 完全一致。
 
-安装：
+安装（桌面版，推荐）：打开 DeepSeek Harness V0.2.1-rc.2 → 左侧栏 **插件** → **添加插件** → 在「包名或地址」中填入：
 
-```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+github:zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
 完整说明见 [README.zh.md](README.zh.md) / [README.md](README.md)，变更明细见 [CHANGELOG.md](CHANGELOG.md)。
@@ -62,10 +62,10 @@ Removed `dsh-client-ui-settings`, `dsh-client-ui-settings-plugins` (zero source 
 
 `lib/client.js` differs from 2.1.0 by **6 added / 3 removed** lines, all in the picker guard; glyph names, module `require`s and CSS are unchanged.
 
-Install:
+Install (desktop app, recommended): open DeepSeek Harness V0.2.1-rc.2 → **Plugins** in the left sidebar → **Add plugin** → enter this in the "package name or address" field:
 
-```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+github:zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
 See [README.md](README.md) / [README.zh.md](README.zh.md) for details and [CHANGELOG.md](CHANGELOG.md) for the full list.

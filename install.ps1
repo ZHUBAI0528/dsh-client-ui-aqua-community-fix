@@ -6,7 +6,7 @@
 # This script is the GitHub fallback: no npm, no git required.
 #
 # One command (from any directory):
-#   powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+#   powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 #
 # It does three things:
 #   1. get the repo (git clone, or plain zip download when git is missing)
@@ -20,7 +20,7 @@
 # one; pass a URL or local path to install another clone.
 
 param(
-    [string]$Source = 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua',
+    [string]$Source = 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix',
     [string]$Version = 'latest',
     [string]$DshHome = $env:DSH_HOME,
     [string]$Profile = 'web'

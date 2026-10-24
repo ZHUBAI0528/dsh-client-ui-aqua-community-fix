@@ -27,9 +27,9 @@ Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin commun
 | Original author | **WYH66666666** — [repository](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin) |
 | Upstream npm package | `dsh-client-ui-aqua` (latest 1.3.1) |
 | Base of this fork | upstream **v1.3.0** sources |
-| Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua) |
+| Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
-| Version | **2.1.0** (independent since this release) |
+| Version | **2.1.1** (independent since 2.0.0) |
 | **DSH support** | **V0.2.1-rc.2** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
@@ -45,7 +45,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ## Differences from upstream v1.3.0
 
-| Item | Upstream v1.3.0 | This package v2.0.0 |
+| Item | Upstream v1.3.0 | This package v2.0.0+ |
 |---|---|---|
 | Layout modes | **Mica + Compatibility**, switchable | **Mica only** — compatibility mode and its selector are removed (tokens and styles too) |
 | Edge blur bands | 5px gradient blur bands at the top/bottom (an upstream feature) | **Removed** — they read as an extra gradient wash over the page edges; readability is carried by the column veil instead (the 13px edge fade stays) |
@@ -82,13 +82,17 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 > Upstream `dsh-client-ui-aqua` and this fork `@zhubai0528/dsh-client-ui-aqua-community-fix` must **not** be installed together — the profile would end up with two `ui-aqua` entries.
 
-### Option 1: npm one-liner (recommended)
+### Option 1: desktop app — install from the in-app plugins page (recommended)
 
-```sh
-dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+Open **DeepSeek Harness 0.2.1-rc.2** and click **Plugins** in the left sidebar.
+
+Click **Add plugin**, then enter the following in the "package name or address" field:
+
+```
+github:zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
-Installs the latest version from npm and registers it as a profile plugin layer (`dsh.bundle` patch) — works on every platform. Reload the UI and it is on.
+No npm and no terminal needed — the plugin is pulled from that GitHub repository's latest release. Reload the UI and it is on.
 
 ### Option 2: GitHub installer (fallback)
 
@@ -97,16 +101,26 @@ No npm account and no git needed (falls back to a plain zip download).
 **Windows (one command):**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
 ```
 
 Installs the **latest release** by default; the script links the plugin into the profile's `node_modules` and registers `ui-aqua` in `cordis.patch.yml` (idempotent).
 
-### Option 3: manual (macOS / Linux)
+### Option 3: npm (not published yet — unavailable)
+
+> ⚠️ This package is **not published to npm**, so the command below fails today. It is kept only to document the npm channel for later.
 
 ```sh
-git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git
-ln -s "$PWD/dsh-client-ui-aqua" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
+dsh plugin --profile web add @zhubai0528/dsh-client-ui-aqua-community-fix
+```
+
+Once published, it installs the latest version from npm and registers it as a profile plugin layer (`dsh.bundle` patch) on every platform.
+
+### Option 4: manual (macOS / Linux)
+
+```sh
+git clone --depth 1 https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix.git
+ln -s "$PWD/dsh-client-ui-aqua-community-fix" "$DSH_HOME/profiles/web/node_modules/@zhubai0528/dsh-client-ui-aqua-community-fix"
 ```
 
 then append to `$DSH_HOME/profiles/web/cordis.patch.yml`:

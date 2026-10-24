@@ -7,11 +7,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ZHUBAI0528/dsh-client-ui-aqua.git"
+    "url": "git+https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix.git"
   },
-  "homepage": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua#readme",
+  "homepage": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix#readme",
   "bugs": {
-    "url": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua/issues"
+    "url": "https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/issues"
   },
   "author": "ZHUBAI0528",
   "keywords": [
