@@ -106,6 +106,20 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.c
 
 默认安装**最新发布版**。脚本会把插件链接进 profile 的 `node_modules`，并在 `cordis.patch.yml` 里登记 `ui-aqua`（幂等，重复运行不会重复登记）。
 
+> ⚠️ **用本方式装过之后，想改从 npm 安装，必须先删掉 junction。** 脚本会在 `node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix` 创建一个**目录联接**（junction）指向源码目录。只要它还在，无论从插件页还是 `dsh plugin add` 安装同一个 npm 包都会失败：
+>
+> ```
+> [ERR_PNPM_EPERM] [importPackage ...] rename ... EPERM: operation not permitted
+> ```
+>
+> 原因是 pnpm 无法用真实目录替换一个指向其它卷的重解析点。先删链接（**只删链接，不碰源码**）：
+>
+> ```powershell
+> cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix"
+> ```
+>
+> 不要用 `Remove-Item -Recurse` —— 旧版 PowerShell 会跟进目标目录，把源码删掉。
+
 ### 方式三：npm
 
 ```sh

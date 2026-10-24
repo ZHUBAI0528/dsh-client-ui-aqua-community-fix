@@ -106,6 +106,20 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.c
 
 Installs the **latest release** by default; the script links the plugin into the profile's `node_modules` and registers `ui-aqua` in `cordis.patch.yml` (idempotent).
 
+> ⚠️ **If you used this installer and later want the npm package, remove the junction first.** The script creates a directory **junction** at `node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix` pointing at the cloned source. While it exists, installing the same package from npm — in the Plugins page or via `dsh plugin add` — fails with:
+>
+> ```
+> [ERR_PNPM_EPERM] [importPackage ...] rename ... EPERM: operation not permitted
+> ```
+>
+> pnpm cannot replace a reparse point that points across volumes. Remove the link only (this never touches the clone):
+>
+> ```powershell
+> cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix"
+> ```
+>
+> Do not use `Remove-Item -Recurse` — older PowerShell follows the target and deletes the source.
+
 ### Option 3: npm
 
 ```sh

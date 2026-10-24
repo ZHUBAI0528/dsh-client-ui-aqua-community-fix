@@ -17,6 +17,17 @@
 #   2. create a junction in the profile's node_modules
 #   3. register ui-aqua in cordis.patch.yml (idempotent - safe to re-run)
 #
+# IMPORTANT - switching to the npm install later:
+# Step 2 leaves a directory JUNCTION (a reparse point) at
+#   <DshHome>\profiles\<profile>\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix
+# pointing at the cloned source. While it exists, installing the same package
+# from npm - in the app's Plugins page or via `dsh plugin add` - fails with
+#   [ERR_PNPM_EPERM] [importPackage ...] rename ... EPERM
+# because pnpm cannot replace a reparse point that points across volumes.
+# Remove the junction first (this deletes the LINK only, never the clone):
+#   cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@zhubai0528\dsh-client-ui-aqua-community-fix"
+# Do NOT use Remove-Item -Recurse: on older PowerShell it follows the target.
+#
 # Version: defaults to 'latest' (the newest GitHub Release, resolved via the
 # API). Pin a version with -Version 'v1.0.1', or track the dev branch with
 # -Version 'main'. Reload the Web UI afterwards. DSH home defaults to
