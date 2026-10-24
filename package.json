@@ -1,7 +1,7 @@
 {
   "name": "@zhubai0528/dsh-client-ui-aqua-community-fix",
   "description": "Aqua glass theme for DeepSeek Harness V0.2.1-rc.2 — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "publishConfig": {
     "access": "public"
   },
@@ -67,28 +67,28 @@
   "license": "AGPL-3.0-only",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-client-runtime": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-theme": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-invariants": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.3 <0.3.0",
+    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-rc.3 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.3 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-theme": ">=0.2.1-rc.3 <0.3.0",
+    "@deepseek-ai/dsh-invariants": ">=0.1.0-rc.5 <0.3.0",
     "react": "^18.2.0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.3",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.5",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.5",
-    "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-theme": "0.2.1-rc.3",
     "@deepseek-ai/dsh-invariants": "^0.1.0-rc.5",
     "@testing-library/react": "^16.1.0",
-    "@tsdown/css": "^0.23.1",
+    "@tsdown/css": "0.23.1",
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tsdown": "^0.23.1",
+    "tsdown": "0.23.1",
     "typescript": "^5.9.3"
   },
   "files": [
@@ -102,6 +102,6 @@
     "assets"
   ],
   "engines": {
-    "dsh": ">=0.2.1-rc.2 <0.3.0"
+    "dsh": ">=0.2.1-rc.3 <0.3.0"
   }
 }

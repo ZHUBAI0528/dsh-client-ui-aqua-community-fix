@@ -1,6 +1,26 @@
 # Changelog
 
-## 未发布
+## 2.0.2 (2026-10-24)
+
+适配 DSH V0.2.1-rc.3。主体代码零改动 —— rc.3 的客户端接口与 rc.2 一致，`tsc --noEmit` 零错误，无需任何适配补丁。
+
+### 宿主版本对齐 rc.3
+
+- `engines.dsh` 从 `>=0.2.1-rc.2 <0.3.0` 改为 `>=0.2.1-rc.3 <0.3.0`
+- peer 中 4 个有 rc.3 的官方包（`dsh-client-locale`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`、`dsh-client-ui-theme`）对齐到 `>=0.2.1-rc.3 <0.3.0`，开发依赖钉到 `0.2.1-rc.3`
+- `dsh-client-runtime` 与 `dsh-invariants` **没有 rc.3**（走独立的 0.1.x 版本线，宿主 asar 内也不单独携带，只作类型来源），范围改为 `>=0.1.0-rc.5 <0.3.0`。此前的 `>=0.2.1-rc.2` 对这两个包是永远不会满足的声明，本次一并纠正
+- `tsdown` / `@tsdown/css` 钉在 `0.23.1`（原为 `^0.23.1`，浮动范围会让产物随小版本漂移）
+
+### 产物
+
+`lib/client.js` 重新构建，252674 → 252210 字节，摘要 `9eb677a8…` → `e7ee93c1…`。逐字节核过差异，只有两类，均不影响逻辑：
+
+- 24 处打包器区域注释 `//#region …` → `//`（构建工具输出格式差异）
+- 2 处 CSS 内联字符串换行符 `CRLF` → `LF`
+
+图标导出名（`IconCheckOutlineRegular` / `IconSparkleRegular`）、运行时 `require` 列表（`dsh-client-store`、`dsh-client-ui-primitives`）、全部 CSS 规则内容均未变。
+
+### 安装脚本
 
 - **`install.ps1` 默认改为从 npm 安装**，junction 方式降级为显式的 `-Link` 开关（仅供开发调试）。原脚本只做源码链接，而 junction 会让应用的文件操作落到源码目录里，并且从此阻止同一个包的 npm 安装 —— pnpm 要把新解包的目录 rename 覆盖目标，而目标是跨卷重解析点，NTFS 拒绝，报 `ERR_PNPM_EPERM`
 - **修掉三个 bug**：① junction 路径写成 `profiles\node_modules`，DSH 实际用 `profiles\<profile>\node_modules`（前者在本机甚至不存在，等于装不到正确位置）；② `-DshHome` 未透传给 CLI —— CLI 从环境变量解析自己的 home，导致脚本检查的路径与实际安装位置不一致；③ 默认 `latest` 会装到旧版 —— pnpm 的 `minimumReleaseAge` 会跳过窗口期内的新发布，现改为先读 npm 的 `latest` dist-tag 再 pin 版本，pnpm 会为被 pin 的版本自动追加豁免条目

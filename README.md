@@ -8,11 +8,11 @@ English | [中文](README.zh.md)
 
 | Item | Value |
 |---|---|
-| **DSH desktop / web** | **V0.2.1-rc.2** |
-| Host client packages | `@deepseek-ai/dsh-client-*` **0.2.1-rc.2** |
-| Declared in metadata | `package.json` → `engines.dsh: ">=0.2.1-rc.2 <0.3.0"` |
+| **DSH desktop / web** | **V0.2.1-rc.3** |
+| Host client packages | `@deepseek-ai/dsh-client-*` **0.2.1-rc.3** |
+| Declared in metadata | `package.json` → `engines.dsh: ">=0.2.1-rc.3 <0.3.0"` |
 
-**V0.2.1-rc.2 is the version this release is built and verified against** — the theme hooks are read from that host build (page-head markup, composer/dock seams, slot names). These are private client surfaces, so a DSH upgrade can break the look or the mount even though nothing changes here. If you are on another DSH build, treat the theme as unsupported and keep a profile backup.
+**V0.2.1-rc.3 is the version this release is built and verified against** — the theme hooks are read from that host build (page-head markup, composer/dock seams, slot names). These are private client surfaces, so a DSH upgrade can break the look or the mount even though nothing changes here. If you are on another DSH build, treat the theme as unsupported and keep a profile backup.
 
 ## Topics / community listing
 
@@ -30,7 +30,7 @@ Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin commun
 | Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
 | Version | **2.0.0** |
-| **DSH support** | **V0.2.1-rc.2** |
+| **DSH support** | **V0.2.1-rc.3** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
 Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web UI and desktop app. The floating header, composer and stats line, and the trajectory view become panes of frosted glass, while the main column can sit on the living fluid board or on your own wallpaper (image or video); the sidebar keeps its stock look. Switch it off and the stock UI comes back exactly, with no source changes to DSH itself.
@@ -57,7 +57,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 | Scheme switching | switching to dark left the backdrop light until a knob was touched | **Fixed**: the layer watches `body[data-ds-dark-theme]` and recomputes the fluid palette, glow tone and brightness direction |
 | Cold-start fluid | a GPU that was not ready permanently disabled the canvas (all-white in light mode) | **Fixed**: retried with backoff (up to 8 attempts, ~12s) |
 | Published tarball | `files` omitted `cordis.patch.yml`, so installs never loaded | **Fixed**: the tarball ships `cordis.patch.yml` and `lib/*` |
-| Dependency range | peer `^0.1.0-rc.5` (mismatched a 0.2.x host) | `>=0.2.1-rc.2 <0.3.0`, pinned to the host line the theme is built against |
+| Dependency range | peer `^0.1.0-rc.5` (mismatched a 0.2.x host) | `>=0.2.1-rc.3 <0.3.0`, pinned to the host line the theme is built against |
 | Licence statement | repo `LICENSE` is AGPL-3.0 while `package.json` said MIT | **Aligned**: both now declare AGPL-3.0 |
 
 ## Features (current)
@@ -84,7 +84,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ### Option 1: desktop app — install from the in-app plugins page (recommended)
 
-Open **DeepSeek Harness 0.2.1-rc.2** and click **Plugins** in the left sidebar.
+Open **DeepSeek Harness 0.2.1-rc.3** and click **Plugins** in the left sidebar.
 
 Click **Add plugin**, then enter the following in the "package name or address" field:
 

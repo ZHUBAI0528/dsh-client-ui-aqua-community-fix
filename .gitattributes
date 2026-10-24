@@ -1,0 +1,16 @@
+# 统一 LF 检出。
+#
+# 为什么必须固定：`lib/client.js` 里内联了 CSS 文本，换行符会直接影响产物字节 ——
+# CRLF 检出比 LF 多出约 17 字节，SHA256SUMS.txt 随之改变。Windows 默认
+# core.autocrlf=true 会检出 CRLF，而 CI 在 Linux 上是 LF，两边构建出的摘要
+# 对不上，install.ps1 的校验会失败。固定为 LF 后产物跨平台可复现。
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary
