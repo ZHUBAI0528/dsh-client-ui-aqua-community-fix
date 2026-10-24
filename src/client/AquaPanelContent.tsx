@@ -299,7 +299,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
                 </div>
               </div>
               <div className={css.knobHint}>{t('aqua.wallpaperHint')}</div>
-              {/* 视频壁纸不支持模糊/磨砂调节（视频直接清晰播放） */}
+              {/* 图片壁纸：模糊度 + 磨砂度（视频壁纸改用下面的模糊度/亮度） */}
               {!isVideoWallpaper && (
                 <>
                   <Knob label={t('aqua.wallpaperBlur')} value={wallpaperBlur} min={0} max={40} step={0.5} unit="px" onChange={setWallpaperBlur} />
