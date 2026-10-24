@@ -141,6 +141,43 @@ Reload the UI. Aqua is **on by default**; the master switch sits at the top of t
 
 > The upstream **Mode** group (Mica / Compatibility) was removed entirely in 2.0.0.
 
+## Backdrop and visual controls
+
+The backdrop comes from one of two sources, switched with a segmented control at the top of the settings panel. The default is **fluid**. Every numeric control pairs a slider with a number box: dragging applies live, typing sets an exact value, and out-of-range input clamps to the nearest bound. Settings persist locally across reloads.
+
+**Fluid (default)** is a live gradient board driven by two knobs — **Hue** over 0–360° (default 320°, a magenta-leaning tone) and **Colour depth** over 0–100% (default 25%).
+
+**Image and video wallpapers** are added with **Choose image** and **Choose video**. Picking either file switches the backdrop source to wallpaper automatically, so the segmented control does not need touching. Images accept any format the browser can decode (PNG, JPG, WebP and so on); video accepts MP4, WebM, Ogg and QuickTime. Once a wallpaper is loaded, a **Delete wallpaper** button appears and clears it back to pure fluid.
+
+The two wallpaper types expose different knobs: images get **Wallpaper blur** and **Wallpaper frost**, while video gets **Video blur** and **Video brightness** — a video has no separate frost layer, so brightness works with the automatic dimming to keep text readable.
+
+### Controls at a glance
+
+| Control | Applies to | Range | Step | Default |
+|---|---|---|---|---|
+| Backdrop source | all | Fluid / Wallpaper | — | Fluid |
+| Hue | fluid | 0–360° | 1° | 320° |
+| Colour depth | fluid | 0–100% | 1% | 25% |
+| Wallpaper blur | image | 0–40 px | 0.5 px | 0 |
+| Wallpaper frost | image | 0–100% | 1% | 0 |
+| Video blur | video | 0–40 px | 0.5 px | 6 px |
+| Video brightness | video | 0–100% | 1% | 45% |
+| Glass blur | all | 0–40 px | 0.5 px | 20 px |
+| Frost | all | 0–100% | 1% | 7% |
+| Background brightness | all | dark 0–50 / light 50–100 | 1% | 50 |
+| Chat surface opacity | all | 0–100% | 1% | 25% |
+| Submenu opacity | all | 0–100% | 1% | 96% |
+
+**Background brightness** narrows its range with the active scheme: dark mode offers 0–50 (0 fades to pure black, 50 unchanged) and light mode offers 50–100 (50 unchanged, 100 brightens to pure white). The other half is unreachable, so a value picked in one scheme stays inert in the other.
+
+**Chat surface opacity** at 0 lets the backdrop show through untouched; at 100 the chat slab is fully opaque. **Submenu opacity** is a separate knob because popovers float above body and composer text and need a denser fill than the cards.
+
+### Things to know
+
+1. **Video is dimmed automatically.** To keep foreground text readable, video wallpapers carry a dimming layer that cannot be turned off; use **Video brightness** and **Video blur** to adjust on top of it.
+2. **A video may not auto-play after a reload.** Browsers limit replay of local files; clicking **Choose video** once restores it, with no need to pick the file again.
+3. **Match the wallpaper to the scheme.** Light wallpapers suit light mode and dark wallpapers suit dark mode, otherwise text contrast drops — the panel says so inline.
+
 ## Upgrading from upstream 1.x
 
 - `dsh.ui-aqua.mode` is no longer read: users who picked Compatibility land on the mica layout (the stored value is left untouched, not destroyed)
