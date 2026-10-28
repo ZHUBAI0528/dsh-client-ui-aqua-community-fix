@@ -64,6 +64,18 @@ const REGIONS = ['sidebar', 'header', 'chat', 'composer'] as const
 /** One configurable layout region. */
 type RegionKey = typeof REGIONS[number]
 
+/**
+ * DOM roots the explanatory-text pass walks, in the same order the CSS uses.
+ * Shared by the full scan and the incremental one so both agree on what
+ * "belongs to which region".
+ */
+const HINT_REGIONS: ReadonlyArray<readonly [string, string]> = [
+  ['sidebar', '[class*="sidebarCol"]'],
+  ['header', '[data-dsh-center] header, [class*="centerCol"] header'],
+  ['chat', '[data-conversation-scroll]'],
+  ['composer', '[data-composer-card], [data-dsh-inputbar]'],
+]
+
 /** Override-stack source for the explanatory-text colour (layered above the palette). */
 const HINT_COLOR_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix/hint'
 
@@ -723,6 +735,12 @@ export class AquaLayer {
   private hintObserver: MutationObserver | undefined
   /** Throttle for the marking pass. */
   private hintStampTimer: number | undefined
+  /** Nodes added since the last marking pass (the only real work per frame). */
+  private hintPending = new Set<HTMLElement>()
+  /** Per-region explanatory colour, re-probed only when the theme re-applies. */
+  private hintTargets = new Map<string, { root: HTMLElement, color: string }>()
+  /** Queued rAF pass for {@link scheduleApply}. */
+  private applyFrame: number | undefined
   private mainFluid: FluidShaderHandle | undefined
   private interactionDisposer: (() => void) | undefined
   private themeListener: (() => void) | undefined
@@ -757,7 +775,7 @@ export class AquaLayer {
         const key = event.key
         if (key !== null && (key in NUMERIC_KEYS || key in STRING_KEYS || key === BACKGROUND_KEY || key === WALLPAPER_KEY || key === WHALE_KEY || key === CRITTERS_KEY || key === MESH_KEY || key === SPOTLIGHT_KEY)) {
           this.reloadSettings()
-          if (this.enabled) { this.applySettings(); this.applyTokens(); this.applyFluidPalettes(); this.syncWhale() }
+          if (this.enabled) { this.scheduleApply(); this.applyTokens(); this.applyFluidPalettes(); this.syncWhale() }
         }
       }
       window.addEventListener('storage', onStorage)
@@ -770,7 +788,7 @@ export class AquaLayer {
         this.settings.preference = this.readThemePreference()
         this.whaleHandle?.setDark(this.dark)
         if (this.enabled) {
-          this.applySettings()
+          this.scheduleApply()
           this.applyFluidPalettes()
         }
       })
@@ -935,7 +953,7 @@ export class AquaLayer {
     if (next === this.settings.blur) return
     this.settings.blur = next
     writeSetting('blur', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the glass frost amount (0-100). */
@@ -944,7 +962,7 @@ export class AquaLayer {
     if (next === this.settings.frost) return
     this.settings.frost = next
     writeSetting('frost', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the fluid hue (degrees, continuous). */
@@ -954,7 +972,7 @@ export class AquaLayer {
     this.settings.fluidHue = next
     writeSetting('fluidHue', next)
     if (this.enabled) {
-      this.applySettings()
+      this.scheduleApply()
       this.applyFluidPalettes()
     }
   }
@@ -974,7 +992,7 @@ export class AquaLayer {
     if (next === this.settings.bgBrightness) return
     this.settings.bgBrightness = next
     writeSetting('bgBrightness', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the backdrop source (fluid board or custom wallpaper). */
@@ -982,7 +1000,7 @@ export class AquaLayer {
     if (value === this.settings.background) return
     this.settings.background = value
     writeBackground(value)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the wallpaper image (a data URL; empty clears it) or a large video
@@ -1005,7 +1023,7 @@ export class AquaLayer {
       this.videoObjectUrl = undefined
       this.videoBlobId = undefined
     }
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the particle-whale flag (chat-area center decoration). */
@@ -1021,7 +1039,7 @@ export class AquaLayer {
     if (value === this.settings.critters) return
     this.settings.critters = value
     writeCritters(value)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the interactive-mesh flag (dot-grid decoration). */
@@ -1037,7 +1055,7 @@ export class AquaLayer {
     if (value === this.settings.spotlight) return
     this.settings.spotlight = value
     writeSpotlight(value)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the submenu surface opacity (0-100). */
@@ -1046,7 +1064,7 @@ export class AquaLayer {
     if (next === this.settings.menuOpacity) return
     this.settings.menuOpacity = next
     writeSetting('menuOpacity', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the submenu click-hold flag (hover-opened submenus survive a click). */
@@ -1055,7 +1073,7 @@ export class AquaLayer {
     this.settings.submenuHold = value
     writeSubmenuHold(value)
     this.syncSubmenuHold()
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the chat surface veil (0-100: 0 = backdrop untouched, 100 = opaque chat slab). */
@@ -1064,7 +1082,7 @@ export class AquaLayer {
     if (next === this.settings.chatAlpha) return
     this.settings.chatAlpha = next
     writeSetting('chatAlpha', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the wallpaper blur radius (px). */
@@ -1073,7 +1091,7 @@ export class AquaLayer {
     if (next === this.settings.wallpaperBlur) return
     this.settings.wallpaperBlur = next
     writeSetting('wallpaperBlur', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the wallpaper frost veil (0-100). */
@@ -1082,7 +1100,7 @@ export class AquaLayer {
     if (next === this.settings.wallpaperFrost) return
     this.settings.wallpaperFrost = next
     writeSetting('wallpaperFrost', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the video wallpaper blur radius (px). */
@@ -1091,7 +1109,7 @@ export class AquaLayer {
     if (next === this.settings.videoBlur) return
     this.settings.videoBlur = next
     writeSetting('videoBlur', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the video wallpaper brightness (0-100, 100 = fully lit). */
@@ -1100,7 +1118,7 @@ export class AquaLayer {
     if (next === this.settings.videoBrightness) return
     this.settings.videoBrightness = next
     writeSetting('videoBrightness', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /* ---------- Typography ---------- */
@@ -1136,7 +1154,7 @@ export class AquaLayer {
       && next.fontSizeTerminal === this.settings.fontSizeTerminal
     if (same) return
     this.settings = { ...this.settings, ...next }
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /**
@@ -1165,7 +1183,7 @@ export class AquaLayer {
     }
     this.settings.preference = this.readThemePreference()
     this.dark = this.resolveScheme()
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /**
@@ -1186,7 +1204,7 @@ export class AquaLayer {
     } catch {
       /* host refused the stack — our own copy still applies */
     }
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Pick the conversation font (a theme-service write, identical to 设置). */
@@ -1199,7 +1217,7 @@ export class AquaLayer {
     if (id === this.settings.paletteChat) return
     this.settings.paletteChat = id
     writeStringSetting('paletteChat', id)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Pick the code-block font. */
@@ -1236,7 +1254,7 @@ export class AquaLayer {
     if (next === this.settings[field]) return
     this.settings[field] = next
     writeSetting(field, next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the conversation-detail blur radius (px). */
@@ -1245,7 +1263,7 @@ export class AquaLayer {
     if (next === this.settings.blurChat) return
     this.settings.blurChat = next
     writeSetting('blurChat', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the menu-page / feature-page blur radius (px). */
@@ -1254,7 +1272,7 @@ export class AquaLayer {
     if (next === this.settings.blurPages) return
     this.settings.blurPages = next
     writeSetting('blurPages', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /**
@@ -1269,7 +1287,7 @@ export class AquaLayer {
     if (next === this.settings[field]) return
     this.settings[field] = next
     writeSetting(field, next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /**
@@ -1282,7 +1300,7 @@ export class AquaLayer {
     if (id === this.settings[field]) return
     this.settings[field] = id
     writeStringSetting(field, id)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the explanatory-text weight (300-800). */
@@ -1291,7 +1309,7 @@ export class AquaLayer {
     if (next === this.settings.hintWeight) return
     this.settings.hintWeight = next
     writeSetting('hintWeight', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the explanatory-text strength (40-100: 100 = as strong as body text). */
@@ -1300,7 +1318,7 @@ export class AquaLayer {
     if (next === this.settings.hintOpacity) return
     this.settings.hintOpacity = next
     writeSetting('hintOpacity', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the explanatory-text font stack (empty = follow the body font). */
@@ -1308,7 +1326,7 @@ export class AquaLayer {
     if (stack === this.settings.hintFont) return
     this.settings.hintFont = stack
     writeStringSetting('hintFont', stack)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the explanatory-text colour preset (empty = follow the scheme). */
@@ -1316,7 +1334,7 @@ export class AquaLayer {
     if (id === this.settings.hintColor) return
     this.settings.hintColor = id
     writeStringSetting('hintColor', id)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the line-height multiplier (1.0-2.5, 1.5 = the host rhythm). */
@@ -1325,7 +1343,7 @@ export class AquaLayer {
     if (next === this.settings.lineHeight) return
     this.settings.lineHeight = next
     writeSetting('lineHeight', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the body font weight (300-800). */
@@ -1334,7 +1352,7 @@ export class AquaLayer {
     if (next === this.settings.weightBody) return
     this.settings.weightBody = next
     writeSetting('weightBody', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Set the heading font weight (400-800). */
@@ -1343,7 +1361,7 @@ export class AquaLayer {
     if (next === this.settings.weightHeading) return
     this.settings.weightHeading = next
     writeSetting('weightHeading', next)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /** Pick a text-colour palette (each palette carries its own light/dark pair). */
@@ -1351,7 +1369,7 @@ export class AquaLayer {
     if (id === this.settings.palette) return
     this.settings.palette = id
     writeStringSetting('palette', id)
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   /* ---------- Typography resets (back to the host defaults) ---------- */
@@ -1474,54 +1492,98 @@ export class AquaLayer {
   }
 
   /**
-   * Mark every explanatory-text node with `data-dsh-aqua-hint="<region>"`.
+   * Mark explanatory-text nodes with `data-dsh-aqua-hint="<region>"`.
    *
    * Colour and strength reach these nodes through the label tokens, so they
    * cover whatever the host paints with them. Font-weight has no token, so the
    * only way to reach the SAME set is to find the nodes that render in the
    * explanatory colour and tag them; CSS then applies the weight by attribute.
-   * Leaf nodes only (they are the text carriers) and one throttled pass at a
-   * time — a streaming transcript would otherwise re-scan on every token.
+   *
+   * The previous version re-ran `querySelectorAll("*")` over every region on
+   * every mutation and called `getComputedStyle()` on each element — on a long
+   * transcript that is thousands of forced style resolutions every 400 ms. Now
+   * the first pass scans once, the observer only queues the nodes it added, and
+   * region colours are probed once per apply instead of once per pass.
    */
   private stampHintNodes(): void {
     if (this.hintStampTimer !== undefined) return
     this.hintStampTimer = window.setTimeout(() => {
       this.hintStampTimer = undefined
-      this.hintObserver?.disconnect()
-      try {
-        const regions: Array<[string, string]> = [
-          ['sidebar', '[class*="sidebarCol"]'],
-          ['header', '[data-dsh-center] header, [class*="centerCol"] header'],
-          ['chat', '[data-conversation-scroll]'],
-          ['composer', '[data-composer-card], [data-dsh-inputbar]'],
-        ]
-        for (const [region, selector] of regions) {
-          const root = document.querySelector<HTMLElement>(selector)
-          if (root === null) continue
-          // Resolve the explanatory colour inside THIS region (it is overridden
-          // per region, so a global probe would miss the local value).
-          const probe = document.createElement('span')
-          probe.style.cssText = 'position:absolute;left:-9999px;color:var(--dsw-alias-label-tertiary)'
-          root.appendChild(probe)
-          const target = getComputedStyle(probe).color
-          probe.remove()
-          for (const el of root.querySelectorAll<HTMLElement>('*')) {
-            if (el.hasAttribute('data-dsh-aqua-hint')) continue
-            if (el.childElementCount > 0) continue
-            if (getComputedStyle(el).color === target) el.setAttribute('data-dsh-aqua-hint', region)
-          }
-        }
-      } finally {
-        this.hintObserver?.observe(document.body, { childList: true, subtree: true })
+      this.flushHintNodes()
+    }, 300)
+  }
+
+  /** Tag one leaf when it renders in the explanatory colour. */
+  private markHintLeaf(el: HTMLElement, region: string, target: string): void {
+    if (el.hasAttribute('data-dsh-aqua-hint')) return
+    if (el.childElementCount > 0) return
+    if (getComputedStyle(el).color === target) el.setAttribute('data-dsh-aqua-hint', region)
+  }
+
+  /** Resolve (and cache) the explanatory colour inside one region. */
+  private hintTarget(region: string, root: HTMLElement): string {
+    const cached = this.hintTargets.get(region)
+    if (cached !== undefined && cached.root === root) return cached.color
+    const probe = document.createElement('span')
+    probe.style.cssText = 'position:absolute;left:-9999px;color:var(--dsw-alias-label-tertiary)'
+    root.appendChild(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    this.hintTargets.set(region, { root, color })
+    return color
+  }
+
+  /** Region a node belongs to (first match wins, same order as the scan). */
+  private hintRegionOf(el: Element): readonly [string, HTMLElement] | null {
+    for (const [region, selector] of HINT_REGIONS) {
+      const root = el.closest<HTMLElement>(selector)
+      if (root !== null) return [region, root]
+    }
+    return null
+  }
+
+  /** One full scan, used when the layer mounts. */
+  private hintFullPass(): void {
+    for (const [region, selector] of HINT_REGIONS) {
+      const root = document.querySelector<HTMLElement>(selector)
+      if (root === null) continue
+      const target = this.hintTarget(region, root)
+      for (const el of root.querySelectorAll<HTMLElement>('*')) this.markHintLeaf(el, region, target)
+    }
+  }
+
+  /** Handle only the nodes added since the previous pass. */
+  private flushHintNodes(): void {
+    if (this.hintPending.size === 0) return
+    const pending = [...this.hintPending]
+    this.hintPending.clear()
+    for (const node of pending) {
+      if (!node.isConnected) continue
+      if (node.hasAttribute('data-dsh-aqua-hint')) continue
+      const hit = this.hintRegionOf(node)
+      if (hit === null) continue
+      const [region, root] = hit
+      const target = this.hintTarget(region, root)
+      if (node.childElementCount === 0) {
+        this.markHintLeaf(node, region, target)
+        continue
       }
-    }, 400)
+      for (const el of node.querySelectorAll<HTMLElement>('*')) this.markHintLeaf(el, region, target)
+    }
   }
 
   /** Start watching for explanatory nodes (idempotent). */
   private startHintStamping(): void {
-    this.stampHintNodes()
+    this.hintFullPass()
     if (this.hintObserver !== undefined) return
-    this.hintObserver = new MutationObserver(() => { this.stampHintNodes() })
+    this.hintObserver = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) this.hintPending.add(node as HTMLElement)
+        }
+      }
+      this.stampHintNodes()
+    })
     this.hintObserver.observe(document.body, { childList: true, subtree: true })
   }
 
@@ -1529,6 +1591,8 @@ export class AquaLayer {
   private stopHintStamping(): void {
     this.hintObserver?.disconnect()
     this.hintObserver = undefined
+    this.hintPending.clear()
+    this.hintTargets.clear()
     if (this.hintStampTimer !== undefined) {
       window.clearTimeout(this.hintStampTimer)
       this.hintStampTimer = undefined
@@ -1543,12 +1607,36 @@ export class AquaLayer {
       this.videoObjectUrl = undefined
     }
     this.videoBlobId = undefined
-    if (this.enabled) this.applySettings()
+    if (this.enabled) this.scheduleApply()
   }
 
   private sync(): void {
     if (this.enabled) this.mount()
     else this.unmount()
+  }
+
+  /**
+   * Coalesce knob writes into one frame.
+   *
+   * A slider drag fires dozens of `input` events per second, and every setter
+   * used to run the full ~40-variable write plus the token composers
+   * synchronously. The store mirror (`sync()`) still updates immediately, so the
+   * control stays glued to the thumb while the stylesheet catches up a frame
+   * later — and only once per frame no matter how many knobs moved.
+   */
+  private scheduleApply(): void {
+    if (this.applyFrame !== undefined) return
+    this.applyFrame = window.requestAnimationFrame(() => {
+      this.applyFrame = undefined
+      this.applySettings()
+    })
+  }
+
+  /** Drop a queued pass (unmount / disable). */
+  private cancelScheduledApply(): void {
+    if (this.applyFrame === undefined) return
+    window.cancelAnimationFrame(this.applyFrame)
+    this.applyFrame = undefined
   }
 
   /** Write the knob-driven CSS variables and mode attributes onto <html>. */
@@ -1671,11 +1759,12 @@ export class AquaLayer {
       else style.removeProperty(`--dsh-aqua-hint-c-${region}`)
     }
 
-    // The colour preset carries a light AND a dark value; the current appearance
-    // decides which one lands, so flipping 外观 re-resolves it on the next apply.
-    const hintColor = hintColorValue(this.settings.hintColor, this.dark)
-    if (hintColor) style.setProperty('--dsh-aqua-hint-color', hintColor)
-    else style.removeProperty('--dsh-aqua-hint-color')
+    // Region colours feed the hint-marking pass. Drop its cached probes here so
+    // the next pass re-reads them — a palette / appearance / explanatory-colour
+    // change all land through this method. (The old `--dsh-aqua-hint-color`
+    // variable was written here but never read by any rule; the colour reaches
+    // the UI through the token override below, so the variable is gone.)
+    this.hintTargets.clear()
 
     // FONT FAMILY BRIDGE. The host writes the picked family to
     // --dsh-font-family-{role}, but its token sheet reads
@@ -1884,7 +1973,7 @@ export class AquaLayer {
       this.dark = next
       this.whaleHandle?.setDark(next)
       if (!this.enabled || domOwner !== this) return
-      this.applySettings()
+      this.scheduleApply()
       this.applyFluidPalettes()
     })
     observer.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
@@ -1904,7 +1993,7 @@ export class AquaLayer {
       // so re-read the scheme on every late pass: scheme-sensitive variables
       // (the brightness overlay's direction) must not stay on a stale belief.
       this.dark = this.resolveScheme()
-      if (this.enabled && domOwner === this) this.applySettings()
+      if (this.enabled && domOwner === this) this.scheduleApply()
     }, delay))
   }
 
@@ -1936,6 +2025,7 @@ export class AquaLayer {
 
   private unmount(): void {
     this.stopHintStamping()
+    this.cancelScheduledApply()
     this.attributeGuard?.disconnect()
     this.attributeGuard = undefined
     this.schemeObserver?.disconnect()
