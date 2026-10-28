@@ -145,7 +145,8 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const frost = useStore(s => s.frost)
   const fluidHue = useStore(s => s.fluidHue)
   const fluidDepth = useStore(s => s.fluidDepth)
-  const bgBrightness = useStore(s => s.bgBrightness)
+  const bgBrightnessLight = useStore(s => s.bgBrightnessLight)
+  const bgBrightnessDark = useStore(s => s.bgBrightnessDark)
   const dark = useStore(s => s.dark)
   const background = useStore(s => s.background)
   const whale = useStore(s => s.whale)
@@ -293,9 +294,11 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
 
   // The brightness knob only ever offers the half that makes sense for the
   // resolved scheme: dark mode darkens (0-50), light mode brightens (50-100).
+  // Each half is stored separately, so flipping 外观 no longer discards the
+  // other side's value or leaves the knob showing a clamped lie.
   const bgMin = dark ? 0 : 50
   const bgMax = dark ? 50 : 100
-  const bgDisplay = Math.min(bgMax, Math.max(bgMin, bgBrightness))
+  const bgBrightness = dark ? bgBrightnessDark : bgBrightnessLight
 
   /* ---------- Typography helpers ---------- */
 
@@ -576,7 +579,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
           </>
         )}
 
-        <Knob label={t('aqua.bgBrightness')} value={bgDisplay} min={bgMin} max={bgMax} step={1} unit="%" onChange={setBgBrightness} />
+        <Knob label={t('aqua.bgBrightness')} value={bgBrightness} min={bgMin} max={bgMax} step={1} unit="%" onChange={setBgBrightness} />
         <div className={css.knobHint}>
           {t(dark ? 'aqua.bgBrightnessHintDark' : 'aqua.bgBrightnessHintLight')}
         </div>

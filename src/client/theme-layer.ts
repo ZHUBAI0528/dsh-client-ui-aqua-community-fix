@@ -240,7 +240,10 @@ export interface AquaSettings {
   /** Fluid depth, 0-100 (0 = deep saturated, 100 = pale light, continuous). */
   fluidDepth: number
   /** Background brightness, 0-100 (0 = pure black, 50 = transparent, 100 = pure white). */
-  bgBrightness: number
+  /** Background brightness for the LIGHT appearance (50 = off, 100 = pure white). */
+  bgBrightnessLight: number
+  /** Background brightness for the DARK appearance (0 = pure black, 50 = off). */
+  bgBrightnessDark: number
   /** Backdrop source: the living fluid board or a custom wallpaper. */
   background: 'fluid' | 'wallpaper'
   /** Wallpaper image data URL (empty until one is picked). */
@@ -357,7 +360,8 @@ export interface AquaSettings {
 const SETTINGS_DEFAULTS: AquaSettings = {
   blur: 20,
   frost: 7,
-  bgBrightness: 50,
+  bgBrightnessLight: 50,
+  bgBrightnessDark: 50,
   background: 'fluid',
   wallpaper: '',
   whale: true,
@@ -433,7 +437,8 @@ const NUMERIC_KEYS = {
   frost: 'dsh.ui-aqua.frost',
   fluidHue: 'dsh.ui-aqua.fluidHue',
   fluidDepth: 'dsh.ui-aqua.fluidDepth',
-  bgBrightness: 'dsh.ui-aqua.bgBrightness',
+  bgBrightnessLight: 'dsh.ui-aqua.bgBrightnessLight',
+  bgBrightnessDark: 'dsh.ui-aqua.bgBrightnessDark',
   chatAlpha: 'dsh.ui-aqua.chatAlpha',
   menuOpacity: 'dsh.ui-aqua.menuOpacity',
   wallpaperBlur: 'dsh.ui-aqua.wallpaperBlur',
@@ -522,14 +527,16 @@ const REGION_HINT_FIELDS = {
 /** Clamp a numeric knob into its sane range. */
 function clampSetting(key: NumericKey, value: number): number {
   const max = key === 'blur' || key === 'wallpaperBlur' || key === 'videoBlur' ? 40
-    : key === 'frost' || key === 'wallpaperFrost' || key === 'bgBrightness' || key === 'videoBrightness' || key === 'chatAlpha' || key === 'menuOpacity' ? 100
+    : key === 'bgBrightnessDark' ? 50
+    : key === 'frost' || key === 'wallpaperFrost' || key === 'bgBrightnessLight' || key === 'videoBrightness' || key === 'chatAlpha' || key === 'menuOpacity' ? 100
     : key === 'lineHeight' ? 2.5
     : key === 'blurChat' || key === 'blurPages' ? 40
     : key === 'hintOpacity' || key.startsWith('hintOpacity') ? 100
     : key === 'weightBody' || key === 'weightHeading' || key === 'hintWeight' ? 800
     : key.startsWith('weightBody') || key.startsWith('weightHeading') || key.startsWith('hintWeight') ? 800
       : 360
-  const min = key === 'lineHeight' ? 1
+  const min = key === 'bgBrightnessLight' ? 50
+    : key === 'lineHeight' ? 1
     : key === 'hintOpacity' || key.startsWith('hintOpacity') ? 40
     : key === 'weightBody' || key === 'weightHeading' || key === 'hintWeight' ? 300
     : key.startsWith('weightBody') || key.startsWith('weightHeading') ? 0
@@ -786,6 +793,9 @@ export class AquaLayer {
         this.dark = this.resolveScheme()
         // 设置 → 外观 may have moved; keep the panel's cubes in sync.
         this.settings.preference = this.readThemePreference()
+        // 设置 → 外观 can move the sizes as well; without this the panel kept
+        // showing the boot snapshot and the next drag overwrote the host value.
+        this.refreshThemeTypography()
         this.whaleHandle?.setDark(this.dark)
         if (this.enabled) {
           this.scheduleApply()
@@ -869,6 +879,22 @@ export class AquaLayer {
       localStorage.removeItem('dsh.ui-aqua.fontSmoothing')
       localStorage.removeItem('dsh.ui-aqua.fontColorPrimary')
       localStorage.removeItem('dsh.ui-aqua.fontColorSecondary')
+      // The single brightness knob was split per appearance: move the old value
+      // into the half it must have come from (the knob never offered the other
+      // half), then drop the legacy key so this migration runs once.
+      const legacyBrightness = localStorage.getItem('dsh.ui-aqua.bgBrightness')
+      if (legacyBrightness !== null) {
+        const legacy = Number(legacyBrightness)
+        if (Number.isFinite(legacy)) {
+          if (legacy > 50 && localStorage.getItem(NUMERIC_KEYS.bgBrightnessLight) === null) {
+            localStorage.setItem(NUMERIC_KEYS.bgBrightnessLight, String(Math.min(100, legacy)))
+          }
+          if (legacy < 50 && localStorage.getItem(NUMERIC_KEYS.bgBrightnessDark) === null) {
+            localStorage.setItem(NUMERIC_KEYS.bgBrightnessDark, String(Math.max(0, legacy)))
+          }
+        }
+        localStorage.removeItem('dsh.ui-aqua.bgBrightness')
+      }
     } catch {
       /* ignore */
     }
@@ -877,7 +903,8 @@ export class AquaLayer {
       frost: readSetting('frost'),
       fluidHue: readSetting('fluidHue'),
       fluidDepth: readSetting('fluidDepth'),
-      bgBrightness: readSetting('bgBrightness'),
+      bgBrightnessLight: readSetting('bgBrightnessLight'),
+      bgBrightnessDark: readSetting('bgBrightnessDark'),
       chatAlpha: readSetting('chatAlpha'),
       background: readBackground(),
       wallpaper: readWallpaper(),
@@ -988,10 +1015,14 @@ export class AquaLayer {
 
   /** Set the background brightness (0-100: 0 = pure black, 50 = transparent, 100 = pure white). */
   setBgBrightness(value: number): void {
-    const next = clampSetting('bgBrightness', value)
-    if (next === this.settings.bgBrightness) return
-    this.settings.bgBrightness = next
-    writeSetting('bgBrightness', next)
+    // Each appearance keeps its OWN value: the knob only spans the half that
+    // makes sense for the resolved scheme, so one shared field silently threw
+    // the other half away every time 外观 flipped.
+    const key = this.dark ? 'bgBrightnessDark' : 'bgBrightnessLight'
+    const next = clampSetting(key, value)
+    if (next === this.settings[key]) return
+    this.settings[key] = next
+    writeSetting(key, next)
     if (this.enabled) this.scheduleApply()
   }
 
@@ -1148,7 +1179,19 @@ export class AquaLayer {
 
   /** Re-read the host typography after 设置 changed it (or after our own write). */
   refreshThemeTypography(): void {
-    const next = this.readThemeTypography()
+    let sizes: { text?: number, code?: number, terminal?: number } | undefined
+    try {
+      sizes = this.ctx.theme.getTheme()?.fontSizes
+    } catch {
+      sizes = undefined
+    }
+    // A role the host does not report keeps the value in force. Falling back to
+    // the shipped default here reset the user's size on every apply.
+    const next = {
+      fontSizeText: sizes?.text ?? this.settings.fontSizeText,
+      fontSizeCode: sizes?.code ?? this.settings.fontSizeCode,
+      fontSizeTerminal: sizes?.terminal ?? this.settings.fontSizeTerminal,
+    }
     const same = next.fontSizeText === this.settings.fontSizeText
       && next.fontSizeCode === this.settings.fontSizeCode
       && next.fontSizeTerminal === this.settings.fontSizeTerminal
@@ -1233,10 +1276,17 @@ export class AquaLayer {
   setFontSizeRole(role: FontRole, px: number): void {
     const spec = FONT_SIZE_SPECS[role]
     const next = Math.round(Math.min(spec.max, Math.max(spec.min, px)))
+    const field = role === 'text' ? 'fontSizeText' : role === 'code' ? 'fontSizeCode' : 'fontSizeTerminal'
+    // A slider drag fires once per pixel; the host write plus read-back is not
+    // free, and an unchanged value is a guaranteed no-op.
+    if (next === this.settings[field]) return
     try {
       this.ctx.theme.setFontSize(role, next)
-    } catch {
-      /* out of range or host refusal — nothing to apply */
+    } catch (error) {
+      // The host refused (role unknown / range rejected). The read-back below
+      // leaves the knob on the value actually in force — the only honest answer
+      // — but the refusal itself must not vanish silently.
+      console.warn('[aqua] the host refused a font-size write', role, next, error)
     }
     this.refreshThemeTypography()
   }
@@ -1667,8 +1717,11 @@ export class AquaLayer {
     // light mode brightens (50 = off, 100 = pure white) — the knob's range
     // and the overlay direction both follow the resolved scheme.
     const dark = this.dark
-    style.setProperty('--dsh-aqua-brightness-black', String(dark ? Math.max(0, (50 - this.settings.bgBrightness) / 50) : 0))
-    style.setProperty('--dsh-aqua-brightness-white', String(dark ? 0 : Math.max(0, (this.settings.bgBrightness - 50) / 50)))
+    // Only the half of the scale that belongs to the current scheme is ever
+    // active, so read the matching field instead of a shared one.
+    const brightness = dark ? this.settings.bgBrightnessDark : this.settings.bgBrightnessLight
+    style.setProperty('--dsh-aqua-brightness-black', String(dark ? Math.max(0, (50 - brightness) / 50) : 0))
+    style.setProperty('--dsh-aqua-brightness-white', String(dark ? 0 : Math.max(0, (brightness - 50) / 50)))
     // Chat surface veil: one knob, scheme-split the same way — light mode
     // lays a white glass sheet over the conversation column, dark mode a
     // neutral dark one. 0 = the backdrop shows untouched.
