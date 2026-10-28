@@ -62,7 +62,7 @@ export const zh = {
   'aqua.fontReset': '恢复默认',
   'aqua.fontResetTitle': '回到「设置」里的默认值',
   'aqua.importFont': '导入字体',
-  'aqua.importFontHint': '支持 .ttf / .otf / .woff2；导入后出现在下拉里',
+  'aqua.importFontHint': '支持 .ttf / .otf / .woff / .woff2，单个文件上限 24 MB；导入后出现在下拉里',
   'aqua.importedFonts': '我的字体',
   /* Region weights + explanatory copy */
   'aqua.regionsGroup': '区域',
@@ -96,6 +96,12 @@ export const zh = {
   'aqua.hintGroupHint': '作用于提示语、时间戳、工具摘要与面板说明等小字；颜色留「跟随色彩方案」时与全局配色一致',
   'aqua.deleteFont': '删除',
   'aqua.fontImportFailed': '导入失败，换一个字体文件试试',
+  'aqua.fontImportEmpty': '文件是空的，换一个字体文件',
+  'aqua.fontImportTooLarge': '字体文件超过 24 MB，请改用子集版或更小的字重',
+  'aqua.fontImportNotAFont': '这不是可识别的字体文件，需要 ttf / otf / woff / woff2',
+  'aqua.fontImportCollection': '不支持 .ttc 字体集合，请先导出单个字重再导入',
+  'aqua.fontImportBroken': '文件已保存，但浏览器加载不了，可能字体已损坏',
+  'aqua.deleteFontConfirm': '删除这个字体？正在使用它的位置会回落到主题字体，且无法撤销。',
   'aqua.fontCategorySystem': '系统自带',
   'aqua.fontCategoryOpen': '开源免费',
   /* Appearance + layout + previews */
@@ -184,7 +190,7 @@ export const en = {
   'aqua.fontReset': 'Reset',
   'aqua.fontResetTitle': 'Back to the value in 设置',
   'aqua.importFont': 'Import font',
-  'aqua.importFontHint': 'Accepts .ttf / .otf / .woff2 — imported faces show up in the list',
+  'aqua.importFontHint': 'Accepts .ttf / .otf / .woff / .woff2 up to 24 MB each — imported faces show up in the list',
   'aqua.importedFonts': 'My fonts',
   /* Region weights + explanatory copy */
   'aqua.regionsGroup': 'Regions',
@@ -218,6 +224,12 @@ export const en = {
   'aqua.hintGroupHint': 'Applies to hints, timestamps, tool summaries and panel notes; keep "Follow scheme" to match the global colours',
   'aqua.deleteFont': 'Delete',
   'aqua.fontImportFailed': 'Import failed — try another font file',
+  'aqua.fontImportEmpty': 'That file is empty — pick another font file',
+  'aqua.fontImportTooLarge': 'Font file is over 24 MB — use a subset or a smaller weight',
+  'aqua.fontImportNotAFont': 'Not a font file we can read (ttf / otf / woff / woff2)',
+  'aqua.fontImportCollection': 'Font collections (.ttc) are not supported — export a single weight first',
+  'aqua.fontImportBroken': 'Saved, but the browser could not load it — the file may be corrupt',
+  'aqua.deleteFontConfirm': 'Delete this font? Anything using it falls back to the theme font, and this cannot be undone.',
   'aqua.fontCategorySystem': 'Built in',
   'aqua.fontCategoryOpen': 'Open source',
   /* Appearance + layout + previews */

@@ -16,7 +16,7 @@ import {
   type FontPickerOption,
 } from './AquaControls.tsx'
 import { CODE_FONT_PRESETS, HINT_COLORS, TEXT_FONT_PRESETS, TEXT_PALETTES, type FontRole } from './typography.ts'
-import { deleteImportedFont, ensureImportedFontFaces, forgetImportedFontFace, saveImportedFont, type ImportedFont } from './font-store.ts'
+import { deleteImportedFont, ensureImportedFontFaces, FontImportError, releaseImportedFont, saveImportedFont, verifyImportedFont, type ImportedFont } from './font-store.ts'
 import { loadVideoHandle, saveVideoBlob, saveVideoHandle } from './wallpaper-store.ts'
 import type { AquaRowState } from './settings-store.ts'
 import type { AquaLocaleKey } from './locales.ts'
@@ -354,27 +354,51 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
     }
   })
 
+  /** Turn a rejected import into the sentence that explains it. */
+  const importFailureText = (error: unknown): string => {
+    if (error instanceof FontImportError) {
+      if (error.reason === 'empty') return t('aqua.fontImportEmpty')
+      if (error.reason === 'too-large') return t('aqua.fontImportTooLarge')
+      if (error.reason === 'not-a-font') return t('aqua.fontImportNotAFont')
+      if (error.reason === 'collection') return t('aqua.fontImportCollection')
+    }
+    return t('aqua.fontImportFailed')
+  }
+
   const onFontFileChosen = (file: File | undefined): void => {
     if (file === undefined) return
     void (async () => {
       try {
         const saved = await saveImportedFont(file)
         setImportedFonts(await ensureImportedFontFaces())
+        // `@font-face` failures are silent: confirm the browser really resolved
+        // the family before claiming success and switching the body font to it.
+        if (!await verifyImportedFont(saved.family)) {
+          window.alert(t('aqua.fontImportBroken'))
+          return
+        }
         // Picking it right away is the whole point of importing one.
         setFontText(`"${saved.family}"`)
         // The popup must say WHERE it landed: body font only, code needs the
         // other picker.
         window.alert(`${t('aqua.importOkTitle')}：${saved.family}\n\n${t('aqua.importOkBody')}`)
-      } catch {
-        window.alert(t('aqua.fontImportFailed'))
+      } catch (error) {
+        window.alert(importFailureText(error))
       }
     })()
   }
 
   const onDeleteFont = (font: ImportedFont): void => {
+    if (!window.confirm(t('aqua.deleteFontConfirm'))) return
+    const stack = `"${font.family}"`
     void (async () => {
       await deleteImportedFont(font.id)
-      forgetImportedFontFace(font.family)
+      releaseImportedFont(font.id)
+      // Clear the references too. Leaving them made the picker say "跟随主题"
+      // while the state still pointed at a family that no longer exists.
+      if (fontText === stack) resetFontText()
+      if (fontCode === stack) resetFontCode()
+      if (hintFont === stack) setHintFont('')
       setImportedFonts(await ensureImportedFontFaces())
     })()
   }
@@ -587,7 +611,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
           <input
             ref={fontFileRef}
             type="file"
-            accept=".ttf,.otf,.woff,.woff2,.ttc"
+            accept=".ttf,.otf,.woff,.woff2"
             className={css.fileInput}
             onChange={(e) => {
               const file = e.target.files?.[0]
