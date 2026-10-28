@@ -30,7 +30,15 @@ const PANEL_ID = 'aqua'
  * @param ctx - client cordis context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-aqua: settings dictionaries')
+  ctx.effect(() => {
+  const disposers = [
+    ctx.locale.register(NS, { zh, en }),
+    // The host may report its language as zh-CN as well as zh; both spellings
+    // resolve to the same dictionary so the panel copy follows 设置 → 语言.
+    ctx.locale.register(NS, 'zh-CN', zh),
+  ]
+  return () => { for (const dispose of disposers) dispose() }
+}, 'ui-aqua: settings dictionaries')
   const t = ctx.locale.bind(NS)
 
   // The layer owns its lifecycle: enable flag, token stack, and CSS attribute
@@ -65,6 +73,54 @@ export function apply(ctx: ClientContext): void {
       wallpaperFrost: s.wallpaperFrost,
       videoBlur: s.videoBlur,
       videoBrightness: s.videoBrightness,
+      // Typography
+      fontText: s.fontText,
+      fontCode: s.fontCode,
+      fontSizeText: s.fontSizeText,
+      fontSizeCode: s.fontSizeCode,
+      fontSizeTerminal: s.fontSizeTerminal,
+      lineHeight: s.lineHeight,
+      weightBody: s.weightBody,
+      weightHeading: s.weightHeading,
+      palette: s.palette,
+      preference: s.preference,
+      weightBodySidebar: s.weightBodySidebar,
+      weightHeadingSidebar: s.weightHeadingSidebar,
+      weightBodyHeader: s.weightBodyHeader,
+      weightHeadingHeader: s.weightHeadingHeader,
+      weightBodyChat: s.weightBodyChat,
+      weightHeadingChat: s.weightHeadingChat,
+      weightBodyComposer: s.weightBodyComposer,
+      weightHeadingComposer: s.weightHeadingComposer,
+      weightBodyStats: s.weightBodyStats,
+      weightHeadingStats: s.weightHeadingStats,
+      hintWeight: s.hintWeight,
+      hintOpacity: s.hintOpacity,
+      hintFont: s.hintFont,
+      hintColor: s.hintColor,
+      blurChat: s.blurChat,
+      blurPages: s.blurPages,
+      hintWeightSidebar: s.hintWeightSidebar,
+      hintOpacitySidebar: s.hintOpacitySidebar,
+      hintWeightHeader: s.hintWeightHeader,
+      hintOpacityHeader: s.hintOpacityHeader,
+      hintWeightChat: s.hintWeightChat,
+      hintOpacityChat: s.hintOpacityChat,
+      hintWeightComposer: s.hintWeightComposer,
+      hintOpacityComposer: s.hintOpacityComposer,
+      hintWeightStats: s.hintWeightStats,
+      hintOpacityStats: s.hintOpacityStats,
+      hintColorSidebar: s.hintColorSidebar,
+      hintColorHeader: s.hintColorHeader,
+      hintColorChat: s.hintColorChat,
+      hintColorComposer: s.hintColorComposer,
+      hintColorStats: s.hintColorStats,
+      weightBodyRightbar: s.weightBodyRightbar,
+      weightHeadingRightbar: s.weightHeadingRightbar,
+      hintWeightRightbar: s.hintWeightRightbar,
+      hintOpacityRightbar: s.hintOpacityRightbar,
+      hintColorRightbar: s.hintColorRightbar,
+      paletteChat: s.paletteChat,
     }
   }
   const sync = (): void => {
@@ -156,6 +212,119 @@ export function apply(ctx: ClientContext): void {
       },
       setVideoBrightness: (videoBrightness) => {
         layer.setVideoBrightness(videoBrightness)
+        sync()
+      },
+      // Typography
+      setFontText: (stack) => {
+        layer.setFontText(stack)
+        sync()
+      },
+      setFontCode: (stack) => {
+        layer.setFontCode(stack)
+        sync()
+      },
+      setFontSizeRole: (role, px) => {
+        layer.setFontSizeRole(role, px)
+        sync()
+      },
+      setLineHeight: (lineHeight) => {
+        layer.setLineHeight(lineHeight)
+        sync()
+      },
+      setWeightBody: (weightBody) => {
+        layer.setWeightBody(weightBody)
+        sync()
+      },
+      setWeightHeading: (weightHeading) => {
+        layer.setWeightHeading(weightHeading)
+        sync()
+      },
+      setPalette: (id) => {
+        layer.setPalette(id)
+        sync()
+      },
+      setPaletteChat: (id) => {
+        layer.setPaletteChat(id)
+        sync()
+      },
+      setThemePreference: (id) => {
+        layer.setThemePreference(id)
+        sync()
+      },
+      setRegionWeight: (region, kind, value) => {
+        layer.setRegionWeight(region, kind, value)
+        sync()
+      },
+      setHintWeight: (value) => {
+        layer.setHintWeight(value)
+        sync()
+      },
+      setHintOpacity: (value) => {
+        layer.setHintOpacity(value)
+        sync()
+      },
+      setHintFont: (stack) => {
+        layer.setHintFont(stack)
+        sync()
+      },
+      setHintColor: (id) => {
+        layer.setHintColor(id)
+        sync()
+      },
+      resetRegionWeights: () => {
+        layer.resetRegionWeights()
+        sync()
+      },
+      resetHint: () => {
+        layer.resetHint()
+        sync()
+      },
+      setBlurChat: (value) => {
+        layer.setBlurChat(value)
+        sync()
+      },
+      setBlurPages: (value) => {
+        layer.setBlurPages(value)
+        sync()
+      },
+      setRegionHintNumber: (region, kind, value) => {
+        layer.setRegionHintNumber(region, kind, value)
+        sync()
+      },
+      setRegionHintColor: (region, id) => {
+        layer.setRegionHintColor(region, id)
+        sync()
+      },
+      resetRegionHints: () => {
+        layer.resetRegionHints()
+        sync()
+      },
+      resetRegion: (region) => {
+        layer.resetRegion(region)
+        sync()
+      },
+      resetFontText: () => {
+        layer.resetFontText()
+        sync()
+      },
+      resetFontCode: () => {
+        layer.resetFontCode()
+        sync()
+      },
+      resetFontSizeRole: (role) => {
+        layer.resetFontSizeRole(role)
+        sync()
+      },
+      resetLineHeight: () => {
+        layer.resetLineHeight()
+        sync()
+      },
+      resetWeights: () => {
+        layer.resetWeights()
+        sync()
+      },
+      resetPalette: () => {
+        layer.resetPalette()
         sync()
       },
       authorizeVideo: () => {

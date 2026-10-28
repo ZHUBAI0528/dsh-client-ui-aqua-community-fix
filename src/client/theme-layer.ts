@@ -24,6 +24,7 @@ import { startSubmenuHold } from './submenu-hold.ts'
 import { mountWhale, type WhaleHandle } from './whale.ts'
 import { mountMesh, type MeshHandle } from './mesh.ts'
 import { startSpotlight, SPOTLIGHT_ATTRIBUTE } from './spotlight.ts'
+import { FONT_SIZE_SPECS, findPalette, hintColorValue, paletteTokens, type FontRole } from './typography.ts'
 
 /** html attribute selecting the Aqua layer: CSS hooks and ambient effects. */
 export const AQUA_ATTRIBUTE = 'data-dsh-aqua'
@@ -54,6 +55,20 @@ export const DEFAULT_ENABLED = true
 
 /** The layer's identity in the theme override stack (inspection-visible). */
 const OVERRIDE_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix'
+
+/** Layout regions whose weights are configurable independently. */
+/* The stats dock lives INSIDE the composer bar, so a separate stats region only
+   duplicated the composer controls; the right details panel is host-owned and is
+   left completely untouched (its width is draggable there). */
+const REGIONS = ['sidebar', 'header', 'chat', 'composer'] as const
+/** One configurable layout region. */
+type RegionKey = typeof REGIONS[number]
+
+/** Override-stack source for the explanatory-text colour (layered above the palette). */
+const HINT_COLOR_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix/hint'
+
+/** Override-stack source for the selected text-colour palette (its own layer). */
+const PALETTE_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix/typography'
 
 const FONT_STACK = "'Space Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', "
   + "'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif"
@@ -240,6 +255,90 @@ export interface AquaSettings {
   videoBlur: number
   /** Video wallpaper brightness, 0-100 (100 = fully lit, 0 = deepest dim). */
   videoBrightness: number
+  /* ---------- Typography settings ---------- */
+  /* Font families and sizes are MIRRORS of the host theme service (设置 → 外观).
+     The panel writes through theme.setFontFamily / theme.setFontSize and re-reads
+     the result, so the two surfaces can never disagree and 设置 里改的立刻在这显示. */
+  /** Conversation font stack. Empty = the host's own stack. */
+  fontText: string
+  /** Code-block font stack. Empty = the host's own stack. */
+  fontCode: string
+  /** Conversation font size, px (host range 10-22). */
+  fontSizeText: number
+  /** Code-block font size, px (host range 10-16). */
+  fontSizeCode: number
+  /** Sidebar terminal font size, px (host range 10-20). */
+  fontSizeTerminal: number
+  /** Line-height multiplier layered over the host rhythm (1.0 = tightest). */
+  lineHeight: number
+  /** Body font weight (300-800). */
+  weightBody: number
+  /** Heading font weight (400-800). */
+  weightHeading: number
+  /** Text-colour palette id (see typography.ts). */
+  palette: string
+  /** Appearance preference — the SAME value as 设置 → 外观 (light / dark / system). */
+  preference: 'light' | 'dark' | 'system'
+  /* Per-region weights. 0 means "follow the global body/heading weight". */
+  /** Body weight inside the left glass sidebar. */
+  weightBodySidebar: number
+  /** Heading weight inside the left glass sidebar. */
+  weightHeadingSidebar: number
+  /** Body weight inside the top glass header. */
+  weightBodyHeader: number
+  /** Heading weight inside the top glass header. */
+  weightHeadingHeader: number
+  /** Body weight inside the conversation column. */
+  weightBodyChat: number
+  /** Heading weight inside the conversation column. */
+  weightHeadingChat: number
+  /** Body weight inside the bottom composer. */
+  weightBodyComposer: number
+  /** Heading weight inside the bottom composer. */
+  weightHeadingComposer: number
+  /** Body weight inside the statistics dock. */
+  weightBodyStats: number
+  /** Heading weight inside the statistics dock. */
+  weightHeadingStats: number
+  /* Explanatory / small copy: its own weight, strength and family. */
+  /** Weight for explanatory text (300-800). */
+  hintWeight: number
+  /** Strength of explanatory text, 40-100 (100 = as strong as body text). */
+  hintOpacity: number
+  /** Font stack for explanatory text; empty = follow the body font. */
+  hintFont: string
+  /** Explanatory-text colour preset id; empty = follow the colour scheme. */
+  hintColor: string
+  /* Conversation-area blur split: the transcript and sibling routes (settings /
+     feature pages) are separate surfaces with different densities. */
+  /** Blur radius for the conversation detail column, px. */
+  blurChat: number
+  /** Blur radius for menu pages / feature pages, px. */
+  blurPages: number
+  /* Per-region explanatory text: weight / strength / colour, five regions. */
+  hintWeightSidebar: number
+  hintOpacitySidebar: number
+  hintColorSidebar: string
+  hintWeightHeader: number
+  hintOpacityHeader: number
+  hintColorHeader: string
+  hintWeightChat: number
+  hintOpacityChat: number
+  hintColorChat: string
+  hintWeightComposer: number
+  hintOpacityComposer: number
+  hintColorComposer: string
+  hintWeightStats: number
+  hintOpacityStats: number
+  hintColorStats: string
+  /* Right-side details panel of a session: its own pane, its own text. */
+  weightBodyRightbar: number
+  weightHeadingRightbar: number
+  hintWeightRightbar: number
+  hintOpacityRightbar: number
+  hintColorRightbar: string
+  /* Conversation-only colour scheme (empty = follow the global font colour). */
+  paletteChat: string
 }
 
 /** Shipped defaults — what a first-time install sees (the tuned look). */
@@ -262,6 +361,58 @@ const SETTINGS_DEFAULTS: AquaSettings = {
   wallpaperFrost: 0,
   videoBlur: 6,
   videoBrightness: 45,
+  /* Typography defaults: the four mirrored fields are re-read from the host on
+     mount; only the three knobs the host does not own are persisted here. */
+  fontText: '',
+  fontCode: '',
+  fontSizeText: FONT_SIZE_SPECS.text.default,
+  fontSizeCode: FONT_SIZE_SPECS.code.default,
+  fontSizeTerminal: FONT_SIZE_SPECS.terminal.default,
+  lineHeight: 1.5,
+  weightBody: 400,
+  weightHeading: 600,
+  palette: 'ink',
+  /* Mirrored from the host theme service on every mount, never persisted here:
+     setting it in 设置 or in this panel writes the same host field. */
+  preference: 'system',
+  /* Region weights: 0 = follow the global knob, so a global change still lands. */
+  weightBodySidebar: 0,
+  weightHeadingSidebar: 0,
+  weightBodyHeader: 0,
+  weightHeadingHeader: 0,
+  weightBodyChat: 0,
+  weightHeadingChat: 0,
+  weightBodyComposer: 0,
+  weightHeadingComposer: 0,
+  weightBodyStats: 0,
+  weightHeadingStats: 0,
+  hintWeight: 400,
+  hintOpacity: 80,
+  hintFont: '',
+  hintColor: '',
+  blurChat: 14,
+  blurPages: 14,
+  hintWeightSidebar: 400,
+  hintOpacitySidebar: 92,
+  hintColorSidebar: '',
+  hintWeightHeader: 400,
+  hintOpacityHeader: 92,
+  hintColorHeader: '',
+  hintWeightChat: 400,
+  hintOpacityChat: 92,
+  hintColorChat: '',
+  hintWeightComposer: 400,
+  hintOpacityComposer: 92,
+  hintColorComposer: '',
+  hintWeightStats: 400,
+  hintOpacityStats: 92,
+  hintColorStats: '',
+  weightBodyRightbar: 0,
+  weightHeadingRightbar: 0,
+  hintWeightRightbar: 400,
+  hintOpacityRightbar: 92,
+  hintColorRightbar: '',
+  paletteChat: '',
 }
 
 /** Numeric knob keys and their localStorage names. */
@@ -277,8 +428,60 @@ const NUMERIC_KEYS = {
   wallpaperFrost: 'dsh.ui-aqua.wallpaperFrost',
   videoBlur: 'dsh.ui-aqua.videoBlur',
   videoBrightness: 'dsh.ui-aqua.videoBrightness',
+  /* Typography numeric keys (host sizes are NOT stored here — they live in 设置) */
+  lineHeight: 'dsh.ui-aqua.lineHeight',
+  weightBody: 'dsh.ui-aqua.weightBody',
+  weightHeading: 'dsh.ui-aqua.weightHeading',
+  weightBodySidebar: 'dsh.ui-aqua.wBodySidebar',
+  weightHeadingSidebar: 'dsh.ui-aqua.wHeadingSidebar',
+  weightBodyHeader: 'dsh.ui-aqua.wBodyHeader',
+  weightHeadingHeader: 'dsh.ui-aqua.wHeadingHeader',
+  weightBodyChat: 'dsh.ui-aqua.wBodyChat',
+  weightHeadingChat: 'dsh.ui-aqua.wHeadingChat',
+  weightBodyComposer: 'dsh.ui-aqua.wBodyComposer',
+  weightHeadingComposer: 'dsh.ui-aqua.wHeadingComposer',
+  weightBodyStats: 'dsh.ui-aqua.wBodyStats',
+  weightHeadingStats: 'dsh.ui-aqua.wHeadingStats',
+  hintWeight: 'dsh.ui-aqua.hintWeight',
+  hintOpacity: 'dsh.ui-aqua.hintOpacity',
+  blurChat: 'dsh.ui-aqua.blurChat',
+  blurPages: 'dsh.ui-aqua.blurPages',
+  hintWeightSidebar: 'dsh.ui-aqua.hintWSidebar',
+  hintOpacitySidebar: 'dsh.ui-aqua.hintOSidebar',
+  hintWeightHeader: 'dsh.ui-aqua.hintWHeader',
+  hintOpacityHeader: 'dsh.ui-aqua.hintOHeader',
+  hintWeightChat: 'dsh.ui-aqua.hintWChat',
+  hintOpacityChat: 'dsh.ui-aqua.hintOChat',
+  hintWeightComposer: 'dsh.ui-aqua.hintWComposer',
+  hintOpacityComposer: 'dsh.ui-aqua.hintOComposer',
+  hintWeightStats: 'dsh.ui-aqua.hintWStats',
+  hintOpacityStats: 'dsh.ui-aqua.hintOStats',
+  weightBodyRightbar: 'dsh.ui-aqua.wBodyRightbar',
+  weightHeadingRightbar: 'dsh.ui-aqua.wHeadingRightbar',
+  hintWeightRightbar: 'dsh.ui-aqua.hintWRightbar',
+  hintOpacityRightbar: 'dsh.ui-aqua.hintORightbar',
 } as const
 type NumericKey = keyof typeof NUMERIC_KEYS
+
+/** String knob keys (font family, colors). */
+const STRING_KEYS = {
+  palette: 'dsh.ui-aqua.palette',
+  hintFont: 'dsh.ui-aqua.hintFont',
+  /* Font families are owned HERE, not mirrored from the host: the host write
+     lands on --dsh-font-family-{role} which nothing consumes, and reading it
+     back returned '' — that is what snapped the picker to the default. */
+  fontText: 'dsh.ui-aqua.fontText',
+  fontCode: 'dsh.ui-aqua.fontCode',
+  hintColor: 'dsh.ui-aqua.hintColor',
+  hintColorSidebar: 'dsh.ui-aqua.hintCSidebar',
+  hintColorHeader: 'dsh.ui-aqua.hintCHeader',
+  hintColorChat: 'dsh.ui-aqua.hintCChat',
+  hintColorComposer: 'dsh.ui-aqua.hintCComposer',
+  hintColorStats: 'dsh.ui-aqua.hintCStats',
+  hintColorRightbar: 'dsh.ui-aqua.hintCRightbar',
+  paletteChat: 'dsh.ui-aqua.paletteChat',
+} as const
+type StringKey = keyof typeof STRING_KEYS
 
 const BACKGROUND_KEY = 'dsh.ui-aqua.background'
 const WALLPAPER_KEY = 'dsh.ui-aqua.wallpaper'
@@ -288,12 +491,39 @@ const MESH_KEY = 'dsh.ui-aqua.mesh'
 const SPOTLIGHT_KEY = 'dsh.ui-aqua.spotlight'
 const SUBMENU_HOLD_KEY = 'dsh.ui-aqua.submenuHold'
 
+/** Region → the two settings fields that carry its body / heading weight. */
+const REGION_WEIGHT_FIELDS = {
+  sidebar: { body: 'weightBodySidebar', heading: 'weightHeadingSidebar' },
+  header: { body: 'weightBodyHeader', heading: 'weightHeadingHeader' },
+  chat: { body: 'weightBodyChat', heading: 'weightHeadingChat' },
+  composer: { body: 'weightBodyComposer', heading: 'weightHeadingComposer' },
+} as const satisfies Record<RegionKey, { body: NumericKey, heading: NumericKey }>
+
+/** Region → the three explanatory-text fields it owns. */
+const REGION_HINT_FIELDS = {
+  sidebar: { weight: 'hintWeightSidebar', opacity: 'hintOpacitySidebar', color: 'hintColorSidebar' },
+  header: { weight: 'hintWeightHeader', opacity: 'hintOpacityHeader', color: 'hintColorHeader' },
+  chat: { weight: 'hintWeightChat', opacity: 'hintOpacityChat', color: 'hintColorChat' },
+  composer: { weight: 'hintWeightComposer', opacity: 'hintOpacityComposer', color: 'hintColorComposer' },
+} as const satisfies Record<RegionKey, { weight: NumericKey, opacity: NumericKey, color: StringKey }>
+
 /** Clamp a numeric knob into its sane range. */
 function clampSetting(key: NumericKey, value: number): number {
   const max = key === 'blur' || key === 'wallpaperBlur' || key === 'videoBlur' ? 40
     : key === 'frost' || key === 'wallpaperFrost' || key === 'bgBrightness' || key === 'videoBrightness' || key === 'chatAlpha' || key === 'menuOpacity' ? 100
+    : key === 'lineHeight' ? 2.5
+    : key === 'blurChat' || key === 'blurPages' ? 40
+    : key === 'hintOpacity' || key.startsWith('hintOpacity') ? 100
+    : key === 'weightBody' || key === 'weightHeading' || key === 'hintWeight' ? 800
+    : key.startsWith('weightBody') || key.startsWith('weightHeading') || key.startsWith('hintWeight') ? 800
       : 360
-  return Number.isFinite(value) ? Math.min(max, Math.max(0, value)) : SETTINGS_DEFAULTS[key]
+  const min = key === 'lineHeight' ? 1
+    : key === 'hintOpacity' || key.startsWith('hintOpacity') ? 40
+    : key === 'weightBody' || key === 'weightHeading' || key === 'hintWeight' ? 300
+    : key.startsWith('weightBody') || key.startsWith('weightHeading') ? 0
+    : key.startsWith('hintWeight') ? 300
+      : 0
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : SETTINGS_DEFAULTS[key]
 }
 
 /** Read one numeric knob from localStorage (absent/parse failure means the default). */
@@ -346,6 +576,24 @@ function readWallpaper(): string {
 function writeWallpaper(value: string): void {
   try {
     localStorage.setItem(WALLPAPER_KEY, value)
+  } catch {
+    /* in-memory state still applies for this tab */
+  }
+}
+
+/** Read one string knob from localStorage (absent means default). */
+function readStringSetting(key: StringKey): string {
+  try {
+    return localStorage.getItem(STRING_KEYS[key]) ?? SETTINGS_DEFAULTS[key]
+  } catch {
+    return SETTINGS_DEFAULTS[key]
+  }
+}
+
+/** Persist one string knob. */
+function writeStringSetting(key: StringKey, value: string): void {
+  try {
+    localStorage.setItem(STRING_KEYS[key], value)
   } catch {
     /* in-memory state still applies for this tab */
   }
@@ -463,6 +711,18 @@ export class AquaLayer {
   /** Resolved palette scheme: dark = the brightness knob darkens, light = it brightens. */
   private dark = false
   private tokenDisposer: (() => void) | undefined
+  /** Disposer of the text-colour palette override layer. */
+  private paletteDisposer: (() => void) | undefined
+  /** Palette id the current override layer was built from (guards churn). */
+  private appliedPalette: string | undefined
+  /** Disposer of the explanatory-text colour layer. */
+  private hintColorDisposer: (() => void) | undefined
+  /** Hint colour id the current layer was built from (re-entrancy guard). */
+  private appliedHintColor: string | undefined
+  /** Watches the DOM so newly rendered explanatory nodes get their weight mark. */
+  private hintObserver: MutationObserver | undefined
+  /** Throttle for the marking pass. */
+  private hintStampTimer: number | undefined
   private mainFluid: FluidShaderHandle | undefined
   private interactionDisposer: (() => void) | undefined
   private themeListener: (() => void) | undefined
@@ -495,7 +755,7 @@ export class AquaLayer {
           this.sync()
         }
         const key = event.key
-        if (key !== null && (key in NUMERIC_KEYS || key === BACKGROUND_KEY || key === WALLPAPER_KEY || key === WHALE_KEY || key === CRITTERS_KEY || key === MESH_KEY || key === SPOTLIGHT_KEY)) {
+        if (key !== null && (key in NUMERIC_KEYS || key in STRING_KEYS || key === BACKGROUND_KEY || key === WALLPAPER_KEY || key === WHALE_KEY || key === CRITTERS_KEY || key === MESH_KEY || key === SPOTLIGHT_KEY)) {
           this.reloadSettings()
           if (this.enabled) { this.applySettings(); this.applyTokens(); this.applyFluidPalettes(); this.syncWhale() }
         }
@@ -506,6 +766,8 @@ export class AquaLayer {
       // the OS). Runs even while disabled so the settings row stays correct.
       this.themeListener = this.ctx.on('theme/change', () => {
         this.dark = this.resolveScheme()
+        // 设置 → 外观 may have moved; keep the panel's cubes in sync.
+        this.settings.preference = this.readThemePreference()
         this.whaleHandle?.setDark(this.dark)
         if (this.enabled) {
           this.applySettings()
@@ -580,6 +842,15 @@ export class AquaLayer {
       // obsolete (the effect re-rasterizes glass panes and blurs text).
       localStorage.removeItem('dsh.ui-aqua.press')
       localStorage.removeItem('dsh.ui-aqua.entrance')
+      // The first typography pass wrote its own variables and colours; the
+      // host theme service owns those values now, so the leftovers are dead.
+      localStorage.removeItem('dsh.ui-aqua.fontFamily')
+      localStorage.removeItem('dsh.ui-aqua.fontSizeBase')
+      localStorage.removeItem('dsh.ui-aqua.fontWeightBody')
+      localStorage.removeItem('dsh.ui-aqua.fontWeightHeading')
+      localStorage.removeItem('dsh.ui-aqua.fontSmoothing')
+      localStorage.removeItem('dsh.ui-aqua.fontColorPrimary')
+      localStorage.removeItem('dsh.ui-aqua.fontColorSecondary')
     } catch {
       /* ignore */
     }
@@ -602,6 +873,51 @@ export class AquaLayer {
       wallpaperFrost: readSetting('wallpaperFrost'),
       videoBlur: readSetting('videoBlur'),
       videoBrightness: readSetting('videoBrightness'),
+      ...this.readThemeTypography(),
+      fontText: readStringSetting('fontText'),
+      fontCode: readStringSetting('fontCode'),
+      hintColor: readStringSetting('hintColor'),
+      blurChat: readSetting('blurChat'),
+      blurPages: readSetting('blurPages'),
+      hintWeightSidebar: readSetting('hintWeightSidebar'),
+      hintOpacitySidebar: readSetting('hintOpacitySidebar'),
+      hintColorSidebar: readStringSetting('hintColorSidebar'),
+      hintWeightHeader: readSetting('hintWeightHeader'),
+      hintOpacityHeader: readSetting('hintOpacityHeader'),
+      hintColorHeader: readStringSetting('hintColorHeader'),
+      hintWeightChat: readSetting('hintWeightChat'),
+      hintOpacityChat: readSetting('hintOpacityChat'),
+      hintColorChat: readStringSetting('hintColorChat'),
+      hintWeightComposer: readSetting('hintWeightComposer'),
+      hintOpacityComposer: readSetting('hintOpacityComposer'),
+      hintColorComposer: readStringSetting('hintColorComposer'),
+      hintWeightStats: readSetting('hintWeightStats'),
+      hintOpacityStats: readSetting('hintOpacityStats'),
+      hintColorStats: readStringSetting('hintColorStats'),
+      weightBodyRightbar: readSetting('weightBodyRightbar'),
+      weightHeadingRightbar: readSetting('weightHeadingRightbar'),
+      hintWeightRightbar: readSetting('hintWeightRightbar'),
+      hintOpacityRightbar: readSetting('hintOpacityRightbar'),
+      hintColorRightbar: readStringSetting('hintColorRightbar'),
+      paletteChat: readStringSetting('paletteChat'),
+      lineHeight: readSetting('lineHeight'),
+      weightBody: readSetting('weightBody'),
+      weightHeading: readSetting('weightHeading'),
+      weightBodySidebar: readSetting('weightBodySidebar'),
+      weightHeadingSidebar: readSetting('weightHeadingSidebar'),
+      weightBodyHeader: readSetting('weightBodyHeader'),
+      weightHeadingHeader: readSetting('weightHeadingHeader'),
+      weightBodyChat: readSetting('weightBodyChat'),
+      weightHeadingChat: readSetting('weightHeadingChat'),
+      weightBodyComposer: readSetting('weightBodyComposer'),
+      weightHeadingComposer: readSetting('weightHeadingComposer'),
+      weightBodyStats: readSetting('weightBodyStats'),
+      weightHeadingStats: readSetting('weightHeadingStats'),
+      hintWeight: readSetting('hintWeight'),
+      hintOpacity: readSetting('hintOpacity'),
+      hintFont: readStringSetting('hintFont'),
+      palette: readStringSetting('palette'),
+      preference: this.readThemePreference(),
     }
   }
 
@@ -787,6 +1103,438 @@ export class AquaLayer {
     if (this.enabled) this.applySettings()
   }
 
+  /* ---------- Typography ---------- */
+
+  /**
+   * Read the host's current font sizes and families — the single source of
+   * truth for everything the panel shows in the font group.
+   * @returns the mirrored typography fields.
+   */
+  private readThemeTypography(): Pick<AquaSettings, 'fontSizeText' | 'fontSizeCode' | 'fontSizeTerminal'> {
+    const defaults = {
+      fontSizeText: FONT_SIZE_SPECS.text.default,
+      fontSizeCode: FONT_SIZE_SPECS.code.default,
+      fontSizeTerminal: FONT_SIZE_SPECS.terminal.default,
+    }
+    try {
+      const theme = this.ctx.theme.getTheme()
+      return {
+        fontSizeText: theme.fontSizes?.text ?? FONT_SIZE_SPECS.text.default,
+        fontSizeCode: theme.fontSizes?.code ?? FONT_SIZE_SPECS.code.default,
+        fontSizeTerminal: theme.fontSizes?.terminal ?? FONT_SIZE_SPECS.terminal.default,
+      }
+    } catch {
+      return defaults
+    }
+  }
+
+  /** Re-read the host typography after 设置 changed it (or after our own write). */
+  refreshThemeTypography(): void {
+    const next = this.readThemeTypography()
+    const same = next.fontSizeText === this.settings.fontSizeText
+      && next.fontSizeCode === this.settings.fontSizeCode
+      && next.fontSizeTerminal === this.settings.fontSizeTerminal
+    if (same) return
+    this.settings = { ...this.settings, ...next }
+    if (this.enabled) this.applySettings()
+  }
+
+  /**
+   * Read the host's appearance preference (the value 设置 → 外观 shows).
+   * @returns light, dark, or system when the host reports something unusable.
+   */
+  private readThemePreference(): 'light' | 'dark' | 'system' {
+    try {
+      const preference = this.ctx.theme.getTheme()?.preference
+      return preference === 'light' || preference === 'dark' ? preference : 'system'
+    } catch {
+      return 'system'
+    }
+  }
+
+  /**
+   * Switch the appearance through the host theme service — byte-for-byte the
+   * same effect as changing it in 设置 → 外观 (one field, one publish).
+   * @param id - light, dark, or system.
+   */
+  setThemePreference(id: 'light' | 'dark' | 'system'): void {
+    try {
+      this.ctx.theme.setTheme(id)
+    } catch {
+      /* host refused the id — the panel keeps whatever the host reports */
+    }
+    this.settings.preference = this.readThemePreference()
+    this.dark = this.resolveScheme()
+    if (this.enabled) this.applySettings()
+  }
+
+  /**
+   * Write one role's font stack through the host theme service.
+   * @param role - font role.
+   * @param stack - CSS font-family stack; empty restores the host stack.
+   */
+  private writeFontRole(role: FontRole, stack: string): void {
+    const key = role === 'text' ? 'fontText' : role === 'code' ? 'fontCode' : undefined
+    if (key !== undefined) {
+      this.settings[key] = stack
+      writeStringSetting(key, stack)
+    }
+    // Best-effort host sync (设置 still shows the value); the host's own read-back
+    // is NOT used, because its write target is a variable nothing consumes.
+    try {
+      this.ctx.theme.setFontFamily(role, stack)
+    } catch {
+      /* host refused the stack — our own copy still applies */
+    }
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Pick the conversation font (a theme-service write, identical to 设置). */
+  setFontText(stack: string): void {
+    this.writeFontRole('text', stack)
+  }
+
+  /** Pick the conversation-only colour scheme (empty = follow the global one). */
+  setPaletteChat(id: string): void {
+    if (id === this.settings.paletteChat) return
+    this.settings.paletteChat = id
+    writeStringSetting('paletteChat', id)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Pick the code-block font. */
+  setFontCode(stack: string): void {
+    this.writeFontRole('code', stack)
+  }
+
+  /**
+   * Set one role's font size through the host theme service (range enforced there).
+   * @param role - font role.
+   * @param px - requested size; clamped to the role's host range and rounded.
+   */
+  setFontSizeRole(role: FontRole, px: number): void {
+    const spec = FONT_SIZE_SPECS[role]
+    const next = Math.round(Math.min(spec.max, Math.max(spec.min, px)))
+    try {
+      this.ctx.theme.setFontSize(role, next)
+    } catch {
+      /* out of range or host refusal — nothing to apply */
+    }
+    this.refreshThemeTypography()
+  }
+
+  /**
+   * Set one region's weight. 0 means "follow the global body/heading knob", so
+   * moving the global slider still lands on regions the user never overrode.
+   * @param region - layout region key.
+   * @param kind - body text or heading text.
+   * @param value - 0 (follow) or 300-800.
+   */
+  setRegionWeight(region: RegionKey, kind: 'body' | 'heading', value: number): void {
+    const field = REGION_WEIGHT_FIELDS[region][kind]
+    const next = clampSetting(field, value)
+    if (next === this.settings[field]) return
+    this.settings[field] = next
+    writeSetting(field, next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the conversation-detail blur radius (px). */
+  setBlurChat(value: number): void {
+    const next = clampSetting('blurChat', value)
+    if (next === this.settings.blurChat) return
+    this.settings.blurChat = next
+    writeSetting('blurChat', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the menu-page / feature-page blur radius (px). */
+  setBlurPages(value: number): void {
+    const next = clampSetting('blurPages', value)
+    if (next === this.settings.blurPages) return
+    this.settings.blurPages = next
+    writeSetting('blurPages', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /**
+   * Set one region's explanatory-text weight or strength.
+   * @param region - layout region key.
+   * @param kind - weight or opacity.
+   * @param value - 300-800 for weight, 40-100 for opacity.
+   */
+  setRegionHintNumber(region: RegionKey, kind: 'weight' | 'opacity', value: number): void {
+    const field = REGION_HINT_FIELDS[region][kind]
+    const next = clampSetting(field, value)
+    if (next === this.settings[field]) return
+    this.settings[field] = next
+    writeSetting(field, next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /**
+   * Set one region's explanatory-text colour preset.
+   * @param region - layout region key.
+   * @param id - preset id (empty = follow the global explanatory colour).
+   */
+  setRegionHintColor(region: RegionKey, id: string): void {
+    const field = REGION_HINT_FIELDS[region].color
+    if (id === this.settings[field]) return
+    this.settings[field] = id
+    writeStringSetting(field, id)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the explanatory-text weight (300-800). */
+  setHintWeight(value: number): void {
+    const next = clampSetting('hintWeight', value)
+    if (next === this.settings.hintWeight) return
+    this.settings.hintWeight = next
+    writeSetting('hintWeight', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the explanatory-text strength (40-100: 100 = as strong as body text). */
+  setHintOpacity(value: number): void {
+    const next = clampSetting('hintOpacity', value)
+    if (next === this.settings.hintOpacity) return
+    this.settings.hintOpacity = next
+    writeSetting('hintOpacity', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the explanatory-text font stack (empty = follow the body font). */
+  setHintFont(stack: string): void {
+    if (stack === this.settings.hintFont) return
+    this.settings.hintFont = stack
+    writeStringSetting('hintFont', stack)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the explanatory-text colour preset (empty = follow the scheme). */
+  setHintColor(id: string): void {
+    if (id === this.settings.hintColor) return
+    this.settings.hintColor = id
+    writeStringSetting('hintColor', id)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the line-height multiplier (1.0-2.5, 1.5 = the host rhythm). */
+  setLineHeight(value: number): void {
+    const next = clampSetting('lineHeight', value)
+    if (next === this.settings.lineHeight) return
+    this.settings.lineHeight = next
+    writeSetting('lineHeight', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the body font weight (300-800). */
+  setWeightBody(value: number): void {
+    const next = clampSetting('weightBody', value)
+    if (next === this.settings.weightBody) return
+    this.settings.weightBody = next
+    writeSetting('weightBody', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Set the heading font weight (400-800). */
+  setWeightHeading(value: number): void {
+    const next = clampSetting('weightHeading', value)
+    if (next === this.settings.weightHeading) return
+    this.settings.weightHeading = next
+    writeSetting('weightHeading', next)
+    if (this.enabled) this.applySettings()
+  }
+
+  /** Pick a text-colour palette (each palette carries its own light/dark pair). */
+  setPalette(id: string): void {
+    if (id === this.settings.palette) return
+    this.settings.palette = id
+    writeStringSetting('palette', id)
+    if (this.enabled) this.applySettings()
+  }
+
+  /* ---------- Typography resets (back to the host defaults) ---------- */
+
+  /** Restore the conversation font to the host stack. */
+  resetFontText(): void {
+    this.writeFontRole('text', '')
+  }
+
+  /** Restore the code font to the host stack. */
+  resetFontCode(): void {
+    this.writeFontRole('code', '')
+  }
+
+  /**
+   * Restore one role's size to the host default.
+   * @param role - font role.
+   */
+  resetFontSizeRole(role: FontRole): void {
+    this.setFontSizeRole(role, FONT_SIZE_SPECS[role].default)
+  }
+
+  /** Restore every region to "follow the global weight". */
+  resetRegionWeights(): void {
+    for (const region of REGIONS) {
+      for (const kind of ['body', 'heading'] as const) this.setRegionWeight(region, kind, 0)
+    }
+  }
+
+  /**
+   * Restore ONE region to defaults: weights back to "follow global" and the
+   * explanatory trio back to the shipped values. The per-region reset button
+   * used to reset every region at once, which read as "nothing happened".
+   * @param region - layout region key.
+   */
+  resetRegion(region: RegionKey): void {
+    this.setRegionWeight(region, 'body', 0)
+    this.setRegionWeight(region, 'heading', 0)
+    this.setRegionHintNumber(region, 'weight', SETTINGS_DEFAULTS.hintWeight)
+    this.setRegionHintNumber(region, 'opacity', SETTINGS_DEFAULTS.hintOpacity)
+    this.setRegionHintColor(region, '')
+  }
+
+  /** Restore every region's explanatory-text knobs. */
+  resetRegionHints(): void {
+    for (const region of REGIONS) {
+      this.setRegionHintNumber(region, 'weight', SETTINGS_DEFAULTS.hintWeight)
+      this.setRegionHintNumber(region, 'opacity', SETTINGS_DEFAULTS.hintOpacity)
+      this.setRegionHintColor(region, '')
+    }
+  }
+
+  /** Restore the explanatory-text knobs to their shipped values. */
+  resetHint(): void {
+    this.setHintWeight(SETTINGS_DEFAULTS.hintWeight)
+    this.setHintOpacity(SETTINGS_DEFAULTS.hintOpacity)
+    this.setHintFont(SETTINGS_DEFAULTS.hintFont)
+    this.setHintColor(SETTINGS_DEFAULTS.hintColor)
+  }
+
+  /** Restore the line-height multiplier. */
+  resetLineHeight(): void {
+    this.setLineHeight(SETTINGS_DEFAULTS.lineHeight)
+  }
+
+  /** Restore both font weights. */
+  resetWeights(): void {
+    this.setWeightBody(SETTINGS_DEFAULTS.weightBody)
+    this.setWeightHeading(SETTINGS_DEFAULTS.weightHeading)
+  }
+
+  /** Drop the colour override and follow the theme tokens again. */
+  resetPalette(): void {
+    this.setPalette('theme')
+  }
+
+  /**
+   * Push the selected palette onto the theme override stack. Every palette
+   * carries a light AND a dark value, so flipping 外观 re-resolves it with no
+   * listener of our own. Following the theme drops the layer entirely.
+   */
+  private applyPaletteTokens(): void {
+    // RE-ENTRANCY: theme.overrideTokens() publishes SYNCHRONOUSLY (the service
+    // does `emit('theme/change')` inside publish()), and our own theme/change
+    // listener calls applySettings() again from inside that emit. The palette id
+    // is therefore recorded BEFORE the call so the nested run bails out here —
+    // keying the guard on paletteDisposer instead deadlocks the boot: that field
+    // is only assigned after overrideTokens() returns, i.e. never during emit.
+    if (this.appliedPalette === this.settings.palette) return
+    const tokens = paletteTokens(findPalette(this.settings.palette))
+    this.appliedPalette = this.settings.palette
+    this.paletteDisposer?.()
+    this.paletteDisposer = undefined
+    if (Object.keys(tokens).length === 0) return
+    this.paletteDisposer = this.ctx.theme.overrideTokens(PALETTE_SOURCE, tokens)
+  }
+
+  /**
+   * Push the explanatory-text colour onto the theme override stack.
+   *
+   * The class-based CSS route did nothing in the real UI — the small copy does
+   * not carry any of the class names we guessed and its colour comes from the
+   * `label-tertiary` / `label-caption` tokens. Overriding those two tokens is
+   * the only route that actually reaches every explanatory surface (hints,
+   * timestamps, tool summaries, panel notes).
+   */
+  private applyHintColorTokens(): void {
+    // Re-entrancy: overrideTokens publishes synchronously; record the id first.
+    if (this.appliedHintColor === this.settings.hintColor) return
+    this.appliedHintColor = this.settings.hintColor
+    const light = hintColorValue(this.settings.hintColor, false)
+    const dark = hintColorValue(this.settings.hintColor, true)
+    this.hintColorDisposer?.()
+    this.hintColorDisposer = undefined
+    if (light === '' || dark === '') return
+    this.hintColorDisposer = this.ctx.theme.overrideTokens(HINT_COLOR_SOURCE, {
+      '--dsw-alias-label-tertiary': { light, dark },
+      '--dsw-alias-label-caption': { light, dark },
+    })
+  }
+
+  /**
+   * Mark every explanatory-text node with `data-dsh-aqua-hint="<region>"`.
+   *
+   * Colour and strength reach these nodes through the label tokens, so they
+   * cover whatever the host paints with them. Font-weight has no token, so the
+   * only way to reach the SAME set is to find the nodes that render in the
+   * explanatory colour and tag them; CSS then applies the weight by attribute.
+   * Leaf nodes only (they are the text carriers) and one throttled pass at a
+   * time — a streaming transcript would otherwise re-scan on every token.
+   */
+  private stampHintNodes(): void {
+    if (this.hintStampTimer !== undefined) return
+    this.hintStampTimer = window.setTimeout(() => {
+      this.hintStampTimer = undefined
+      this.hintObserver?.disconnect()
+      try {
+        const regions: Array<[string, string]> = [
+          ['sidebar', '[class*="sidebarCol"]'],
+          ['header', '[data-dsh-center] header, [class*="centerCol"] header'],
+          ['chat', '[data-conversation-scroll]'],
+          ['composer', '[data-composer-card], [data-dsh-inputbar]'],
+        ]
+        for (const [region, selector] of regions) {
+          const root = document.querySelector<HTMLElement>(selector)
+          if (root === null) continue
+          // Resolve the explanatory colour inside THIS region (it is overridden
+          // per region, so a global probe would miss the local value).
+          const probe = document.createElement('span')
+          probe.style.cssText = 'position:absolute;left:-9999px;color:var(--dsw-alias-label-tertiary)'
+          root.appendChild(probe)
+          const target = getComputedStyle(probe).color
+          probe.remove()
+          for (const el of root.querySelectorAll<HTMLElement>('*')) {
+            if (el.hasAttribute('data-dsh-aqua-hint')) continue
+            if (el.childElementCount > 0) continue
+            if (getComputedStyle(el).color === target) el.setAttribute('data-dsh-aqua-hint', region)
+          }
+        }
+      } finally {
+        this.hintObserver?.observe(document.body, { childList: true, subtree: true })
+      }
+    }, 400)
+  }
+
+  /** Start watching for explanatory nodes (idempotent). */
+  private startHintStamping(): void {
+    this.stampHintNodes()
+    if (this.hintObserver !== undefined) return
+    this.hintObserver = new MutationObserver(() => { this.stampHintNodes() })
+    this.hintObserver.observe(document.body, { childList: true, subtree: true })
+  }
+
+  /** Stop watching and drop the pending pass. */
+  private stopHintStamping(): void {
+    this.hintObserver?.disconnect()
+    this.hintObserver = undefined
+    if (this.hintStampTimer !== undefined) {
+      window.clearTimeout(this.hintStampTimer)
+      this.hintStampTimer = undefined
+    }
+  }
+
   /** After the user re-grants file access (选择视频 click on an fsa: video),
    *  drop the mount guard and re-apply so the file is re-read and played. */
   authorizeVideo(): void {
@@ -847,6 +1595,109 @@ export class AquaLayer {
     // so they must be able to go near-solid independently of the card frost.
     style.setProperty('--dsh-aqua-menu-opacity', String(this.settings.menuOpacity))
 
+    // Typography: font family and size are NOT ours to write — the host theme
+    // service owns them (设置 → 外观), so both surfaces stay identical. What we
+    // do own: the line-height multiplier (riding the host's own rhythm), the
+    // two weights, and the text-colour palette (its own override layer).
+    style.setProperty('--dsh-aqua-line-scale', String(this.settings.lineHeight / 1.5))
+    style.setProperty('--dsh-aqua-weight-body', String(this.settings.weightBody))
+    style.setProperty('--dsh-aqua-weight-heading', String(this.settings.weightHeading))
+
+    // Per-region weights: an unset region (0) resolves to the global knob, so a
+    // global change keeps flowing into every region the user did not override.
+    const regionWeight = (region: RegionKey, kind: 'body' | 'heading'): number => {
+      const own = this.settings[REGION_WEIGHT_FIELDS[region][kind]]
+      if (own > 0) return own
+      return kind === 'body' ? this.settings.weightBody : this.settings.weightHeading
+    }
+    for (const region of REGIONS) {
+      style.setProperty(`--dsh-aqua-wb-${region}`, String(regionWeight(region, 'body')))
+      style.setProperty(`--dsh-aqua-wh-${region}`, String(regionWeight(region, 'heading')))
+    }
+
+    // Explanatory copy gets its own weight / strength / family / colour.
+    style.setProperty('--dsh-aqua-hint-weight', String(this.settings.hintWeight))
+    style.setProperty('--dsh-aqua-hint-opacity', String(this.settings.hintOpacity / 100))
+    if (this.settings.hintFont) style.setProperty('--dsh-aqua-hint-family', this.settings.hintFont)
+    else style.removeProperty('--dsh-aqua-hint-family')
+    // Conversation-only font colour: written as plain variables on <html> and
+    // consumed only when the attribute is present, so "follow global" stays a
+    // no-op rather than a second, competing colour source.
+    const chatScheme = findPalette(this.settings.paletteChat)
+    const chatInk = this.dark ? chatScheme.dark : chatScheme.light
+    if (chatInk.primary) {
+      style.setProperty('--dsh-aqua-chat-ink-primary', chatInk.primary)
+      style.setProperty('--dsh-aqua-chat-ink-secondary', chatInk.secondary)
+      style.setProperty('--dsh-aqua-chat-ink-accent', chatInk.accent)
+      document.documentElement.setAttribute('data-dsh-aqua-chat-ink', '')
+    } else {
+      style.removeProperty('--dsh-aqua-chat-ink-primary')
+      style.removeProperty('--dsh-aqua-chat-ink-secondary')
+      style.removeProperty('--dsh-aqua-chat-ink-accent')
+      document.documentElement.removeAttribute('data-dsh-aqua-chat-ink')
+    }
+
+    // Explanatory-text BASE colour. The region rules build their token as
+    // color-mix(<region colour> <strength>, transparent), falling back to this
+    // value. It has to be a concrete colour: defaulting it to
+    // var(--dsw-alias-label-tertiary) made the variable reference the very token
+    // the region rule rewrites, so the declaration was dropped and neither the
+    // colour nor the strength ever applied.
+    const schemePalette = findPalette(this.settings.palette)
+    const schemeInk = this.dark ? schemePalette.dark : schemePalette.light
+    // The per-region "follow" value means "follow the GLOBAL explanatory
+    // colour" (字体颜色 → 说明性文字颜色), not "follow the colour scheme".
+    // Order: explicit global explanatory colour → that scheme's hint → neutral.
+    const globalHint = hintColorValue(this.settings.hintColor, this.dark)
+    const baseHint = globalHint !== ''
+      ? globalHint
+      : schemeInk.hint !== ''
+        ? schemeInk.hint
+        // "Follow the theme" has no palette hint of ours — use a neutral that
+        // matches the host's explanatory tone closely enough for the fallback.
+        : (this.dark ? '#A9B8C9' : '#5A6472')
+    style.setProperty('--dsh-aqua-hint-c-base', baseHint)
+    style.setProperty('--dsh-aqua-hint-cc-base', baseHint)
+
+    // Conversation-area blur split + per-region explanatory text.
+    style.setProperty('--dsh-aqua-blur-chat', `${this.settings.blurChat}px`)
+    style.setProperty('--dsh-aqua-blur-pages', `${this.settings.blurPages}px`)
+    for (const region of REGIONS) {
+      const fields = REGION_HINT_FIELDS[region]
+      style.setProperty(`--dsh-aqua-hint-w-${region}`, String(this.settings[fields.weight]))
+      style.setProperty(`--dsh-aqua-hint-o-${region}`, String(this.settings[fields.opacity] / 100))
+      const regionColor = hintColorValue(this.settings[fields.color], this.dark)
+      if (regionColor) style.setProperty(`--dsh-aqua-hint-c-${region}`, regionColor)
+      else style.removeProperty(`--dsh-aqua-hint-c-${region}`)
+    }
+
+    // The colour preset carries a light AND a dark value; the current appearance
+    // decides which one lands, so flipping 外观 re-resolves it on the next apply.
+    const hintColor = hintColorValue(this.settings.hintColor, this.dark)
+    if (hintColor) style.setProperty('--dsh-aqua-hint-color', hintColor)
+    else style.removeProperty('--dsh-aqua-hint-color')
+
+    // FONT FAMILY BRIDGE. The host writes the picked family to
+    // --dsh-font-family-{role}, but its token sheet reads
+    // --dsh-font-family-{role}-default — nothing consumes the former, which is
+    // exactly why picking a code font did nothing. Our inline values sit above
+    // the token layer, so both the body and the code blocks finally follow the
+    // pickers. Empty means "let the theme stack win".
+    if (this.settings.fontText) style.setProperty('--dsw-font-family', this.settings.fontText)
+    else style.removeProperty('--dsw-font-family')
+    if (this.settings.fontCode) {
+      style.setProperty('--ds-font-family-code', this.settings.fontCode)
+      style.setProperty('--dsw-font-markdown-code-font-family', this.settings.fontCode)
+    } else {
+      style.removeProperty('--ds-font-family-code')
+      style.removeProperty('--dsw-font-markdown-code-font-family')
+    }
+
+    this.applyPaletteTokens()
+    // Layered AFTER the palette on purpose: the theme service composes override
+    // layers in registration order, so this one wins on the shared tertiary /
+    // caption tokens.
+    this.applyHintColorTokens()
 
     // The float layout is the only rendering mode: every layout rule in the
     // stylesheet keys off data-dsh-float, so it is always present.
@@ -967,6 +1818,7 @@ export class AquaLayer {
   }
 
   private mount(): void {
+    this.startHintStamping()
     domOwner = this
     document.documentElement.setAttribute(AQUA_ATTRIBUTE, '')
     this.guardGateAttributes()
@@ -1083,6 +1935,7 @@ export class AquaLayer {
   }
 
   private unmount(): void {
+    this.stopHintStamping()
     this.attributeGuard?.disconnect()
     this.attributeGuard = undefined
     this.schemeObserver?.disconnect()
@@ -1105,6 +1958,12 @@ export class AquaLayer {
     this.whaleHandle = undefined
     this.meshHandle?.dispose()
     this.meshHandle = undefined
+    this.paletteDisposer?.()
+    this.paletteDisposer = undefined
+    this.appliedPalette = undefined
+    this.hintColorDisposer?.()
+    this.hintColorDisposer = undefined
+    this.appliedHintColor = undefined
     this.tokenDisposer?.()
     this.tokenDisposer = undefined
     if (this.videoObjectUrl !== undefined) {

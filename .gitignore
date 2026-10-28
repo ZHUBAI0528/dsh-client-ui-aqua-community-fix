@@ -1,5 +1,7 @@
 node_modules/
 .npm-stage/
+# 手工回滚点（按时间戳命名，内容与 src/ 重复，绝不入库）
+.bak/
 lib/tsconfig.tsbuildinfo
 lib/types/**/*.js
 lib/types/**/*.js.map

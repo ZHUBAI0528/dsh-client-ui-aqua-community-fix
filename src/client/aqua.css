@@ -1143,6 +1143,63 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   font-weight: 500;
 }
 
+/* ---------- Typography knob overrides ----------
+   Font family and font size are NOT written here: they ride the host theme
+   service (theme.setFontFamily / theme.setFontSize), which already drives
+   --dsh-content-font-size and the delta variables the host's own line-height
+   calc() consumes. Reproducing them here is exactly what made the old size
+   knob inert, so this file only layers the two things the host does not own:
+   a line-height multiplier and the two font weights.
+
+   The selectors are the host's real DOM hooks (read out of the conversation
+   and chat bundles), not guesses: [data-conversation-scroll] wraps the
+   transcript, [data-chat-flow-kind] marks each message flow, and
+   [data-step-process-content] marks a tool-step body. ---------- */
+[data-dsh-aqua] {
+  /* lineHeight 1.5 = 1x (the host rhythm); the knob scales it. */
+  --dsh-aqua-line-scale: 1;
+  --dsh-aqua-weight-body: 400;
+  --dsh-aqua-weight-heading: 600;
+}
+
+/* Line height: scale the host's own formula so the delta stays in the loop
+   (a bare line-height here would fight --dsh-content-font-delta). */
+[data-dsh-aqua] [data-conversation-scroll] p,
+[data-dsh-aqua] [data-conversation-scroll] li,
+[data-dsh-aqua] [data-conversation-scroll] blockquote,
+[data-dsh-aqua] [data-chat-flow-kind],
+[data-dsh-aqua] [data-step-process-content] {
+  line-height: calc((24px + var(--dsh-content-font-delta, 0px)) * var(--dsh-aqua-line-scale));
+}
+
+/* Weights — GLOBAL, not transcript-only.
+   The old rule was scoped to [data-conversation-scroll], which is why the
+   "正文明细" knob only moved chat text. Now the root carries the value (so every
+   inherited surface follows), the common prose elements are pinned explicitly,
+   and headings ride the heading knob. Region rules further down override these
+   per region. */
+[data-dsh-aqua] {
+  font-weight: var(--dsh-aqua-weight-body, 400);
+}
+
+[data-dsh-aqua] :is(p, li, blockquote, td, th, dd, dt, figcaption) {
+  font-weight: var(--dsh-aqua-weight-body);
+}
+
+[data-dsh-aqua] [data-chat-flow-kind],
+[data-dsh-aqua] [data-step-process-content],
+[data-dsh-aqua] [data-composer-card] [contenteditable],
+[data-dsh-aqua] [data-dsh-inputbar] [contenteditable],
+[data-dsh-aqua] textarea,
+[data-dsh-aqua] [class*='bubble'] {
+  font-weight: var(--dsh-aqua-weight-body);
+}
+
+[data-dsh-aqua] :is(h1, h2, h3, h4, h5, h6),
+[data-dsh-aqua] :is([class*='pageTitle'], [class*='sectionTitle'], [class*='heading']) {
+  font-weight: var(--dsh-aqua-weight-heading);
+}
+
 /* ---------- Page-level transitions: phase flips, view tabs, entrances.
    Container-level animations are opacity-only —a running transform would
    re-anchor position:fixed descendants (menus/modals) mid-flight. ---------- */
@@ -1210,4 +1267,235 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   [data-dsh-aqua] [data-aqua-critter='bubble'] {
     opacity: 0;
   }
+}
+
+/* ---------- Per-region weights ----------
+   Five glass regions get their own body/heading weight. A region that the user
+   never touched resolves to the global knob (the layer writes the resolved
+   value into --dsh-aqua-wb-*), so a global change keeps flowing into it.
+   Text elements inherit from the region container so nested spans follow, while
+   headings/strong reset to the heading knob. ---------- */
+
+[data-dsh-aqua] [class*='sidebarCol'] {
+  font-weight: var(--dsh-aqua-wb-sidebar, 400);
+}
+/* Region body/heading weights. `!important` is deliberate: the host paints
+   font-weight on hashed classes, and an inherited value loses that duel. The
+   heading rule comes second so it wins over the body rule. */
+[data-dsh-aqua] [class*='sidebarCol'] :is(span, div, p, li, a, button, label, td, th) {
+  font-weight: var(--dsh-aqua-wb-sidebar, 400) !important;
+}
+[data-dsh-aqua] [class*='sidebarCol'] :is(h1, h2, h3, h4, h5, h6, strong, b, [class*='title'], [class*='heading']) {
+  font-weight: var(--dsh-aqua-wh-sidebar, 600) !important;
+}
+
+[data-dsh-aqua] [data-dsh-center] header,
+[data-dsh-aqua] [class*='centerCol'] header,
+[data-dsh-aqua] [class*='pageHead'] {
+  font-weight: var(--dsh-aqua-wb-header, 400);
+}
+[data-dsh-aqua] [data-dsh-center] header :is(span, div, p, a, button, td, th),
+[data-dsh-aqua] [class*='centerCol'] header :is(span, div, p, a, button, td, th),
+[data-dsh-aqua] [class*='pageHead'] :is(span, div, p, a, button, td, th) {
+  font-weight: var(--dsh-aqua-wb-header, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-center] header :is(h1, h2, h3, h4, strong, b, [class*='title']),
+[data-dsh-aqua] [class*='centerCol'] header :is(h1, h2, h3, h4, strong, b, [class*='title']),
+[data-dsh-aqua] [class*='pageHead'] :is(h1, h2, h3, h4, strong, b, [class*='title']) {
+  font-weight: var(--dsh-aqua-wh-header, 600) !important;
+}
+
+[data-dsh-aqua] [data-conversation-scroll] {
+  font-weight: var(--dsh-aqua-wb-chat, 400);
+}
+[data-dsh-aqua] [data-conversation-scroll] :is(p, li, blockquote, div, span, td, th) {
+  font-weight: var(--dsh-aqua-wb-chat, 400) !important;
+}
+[data-dsh-aqua] [data-conversation-scroll] :is(h1, h2, h3, h4, h5, h6, strong, b) {
+  font-weight: var(--dsh-aqua-wh-chat, 600) !important;
+}
+
+[data-dsh-aqua] [data-composer-card],
+[data-dsh-aqua] [data-dsh-inputbar] {
+  font-weight: var(--dsh-aqua-wb-composer, 400);
+}
+[data-dsh-aqua] [data-composer-card] :is(span, div, p, a, button, label, td, th),
+[data-dsh-aqua] [data-dsh-inputbar] :is(span, div, p, a, button, label, td, th) {
+  font-weight: var(--dsh-aqua-wb-composer, 400) !important;
+}
+[data-dsh-aqua] [data-composer-card] :is(h1, h2, h3, h4, strong, b, [class*='title']),
+[data-dsh-aqua] [data-dsh-inputbar] :is(h1, h2, h3, h4, strong, b, [class*='title']) {
+  font-weight: var(--dsh-aqua-wh-composer, 600) !important;
+}
+/* ---------- Explanatory / small copy ----------
+   Its own weight, strength (opacity) and family, independent of body text.
+   The host renders these as label-tertiary/caption; this layer keeps them
+   readable on busy wallpapers instead of fading them into the glass. ---------- */
+[data-dsh-aqua] :is(
+  [class*='hint'],
+  [class*='caption'],
+  [class*='description'],
+  [class*='label-secondary'],
+  [class*='subtitle'],
+  [class*='meta'],
+  small,
+  time,
+  figcaption
+) {
+  font-family: var(--dsh-aqua-hint-family, inherit);
+  font-weight: var(--dsh-aqua-hint-weight, 400);
+  opacity: var(--dsh-aqua-hint-opacity, 0.8);
+  /* Colour is delivered through the label-tertiary / label-caption token
+     layer (see applyHintColorTokens) — a class-scoped color rule never matched
+     the real explanatory nodes. */
+}
+
+/* ---------- Conversation blur, split in two ----------
+   The center column carries the readable glass sheet. Its blur now comes from
+   two knobs:
+   - 会话详情模糊度  → the transcript route (a [data-conversation-scroll] exists)
+   - 菜单页模糊度    → settings / feature pages (no transcript in the column)
+   A brand-new session (hero phase) stays sharp: the welcome screen keeps only
+   the sidebar / header / composer glass, as asked. ---------- */
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):has([data-conversation-scroll]) {
+  backdrop-filter: blur(var(--dsh-aqua-blur-chat, 14px)) saturate(1.04);
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur-chat, 14px)) saturate(1.04);
+}
+
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):not(:has([data-conversation-scroll])) {
+  backdrop-filter: blur(var(--dsh-aqua-blur-pages, 14px)) saturate(1.04);
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur-pages, 14px)) saturate(1.04);
+}
+
+/* New session / welcome page: no blur on the column itself. */
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):has([data-phase='hero'], [data-content-phase='hero']) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ---------- Per-region explanatory text ----------
+   Each region overrides the three explanatory knobs. `!important` is required:
+   the host writes these colours/font-weights on hashed classes, and a normal
+   rule would lose the cascade on exactly the nodes we need to reach. ---------- */
+[data-dsh-aqua] [class*='sidebarCol'] :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
+  font-weight: var(--dsh-aqua-hint-w-sidebar, 400) !important;
+  opacity: var(--dsh-aqua-hint-o-sidebar, 0.92) !important;
+  color: var(--dsh-aqua-hint-c-sidebar, var(--dsw-alias-label-tertiary)) !important;
+  color: var(--dsh-aqua-hint-c-sidebar, var(--dsw-alias-label-tertiary)) !important;
+}
+
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']) header :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
+  font-weight: var(--dsh-aqua-hint-w-header, 400) !important;
+}
+
+[data-dsh-aqua] [data-conversation-scroll] :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
+  font-weight: var(--dsh-aqua-hint-w-chat, 400) !important;
+}
+
+[data-dsh-aqua] :is([data-composer-card], [data-dsh-inputbar]) :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
+  font-weight: var(--dsh-aqua-hint-w-composer, 400) !important;
+}/* ---------- Conversation-only font colour ----------
+   Only active when the user picked a scheme for the conversation; "follow
+   global" removes the attribute and lets the label tokens win. ---------- */
+[data-dsh-aqua][data-dsh-aqua-chat-ink] [data-conversation-scroll] :is(p, li, blockquote, td, th, [data-chat-flow-kind], [data-chat-group-part]) {
+  color: var(--dsh-aqua-chat-ink-primary) !important;
+}
+
+[data-dsh-aqua][data-dsh-aqua-chat-ink] [data-conversation-scroll] :is([class*='hint'], [class*='caption'], [class*='label-secondary'], small, time) {
+  color: var(--dsh-aqua-chat-ink-secondary) !important;
+}
+
+[data-dsh-aqua][data-dsh-aqua-chat-ink] [data-conversation-scroll] :is(a, [class*='link']) {
+  color: var(--dsh-aqua-chat-ink-accent) !important;
+}
+/* NOTE: a `[class*='_panel'] / [class*='_section'] / [class*='_card']` catch-all
+   used to live here. Inside the right pane those names match the host's own
+   column wrappers, which painted a full-width glass band across the bottom of
+   the panel. Removed — only the menu rows are glass now. */
+
+/* ---------- Explanatory text: colour AND strength ride the tokens ----------
+   The class-name route could never cover everything the host paints with
+   label-tertiary/label-caption (cost-meter uses cm-* classes, the shell uses
+   hashes). Overriding the two variables on each region container reaches every
+   such node — and folding the strength into a color-mix means 浓度 follows the
+   SAME range as the colour, instead of a separate, narrower one. ---------- */
+/* --dsh-aqua-hint-c-base / -cc-base are written by the layer (the current
+   colour scheme's explanatory colour). They must NOT default to the same token
+   the region rules override, or the variable references itself and the whole
+   declaration is dropped. */
+
+[data-dsh-aqua] [class*='sidebarCol'] {
+  --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-sidebar, var(--dsh-aqua-hint-c-base)) calc(var(--dsh-aqua-hint-o-sidebar, 0.92) * 100%), transparent);
+  --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-c-sidebar, var(--dsh-aqua-hint-cc-base)) calc(var(--dsh-aqua-hint-o-sidebar, 0.92) * 100%), transparent);
+}
+
+[data-dsh-aqua] [data-dsh-center] header,
+[data-dsh-aqua] [class*='centerCol'] header {
+  --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-header, var(--dsh-aqua-hint-c-base)) calc(var(--dsh-aqua-hint-o-header, 0.92) * 100%), transparent);
+  --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-c-header, var(--dsh-aqua-hint-cc-base)) calc(var(--dsh-aqua-hint-o-header, 0.92) * 100%), transparent);
+}
+
+[data-dsh-aqua] [data-conversation-scroll] {
+  --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-chat, var(--dsh-aqua-hint-c-base)) calc(var(--dsh-aqua-hint-o-chat, 0.92) * 100%), transparent);
+  --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-c-chat, var(--dsh-aqua-hint-cc-base)) calc(var(--dsh-aqua-hint-o-chat, 0.92) * 100%), transparent);
+}
+
+[data-dsh-aqua] [data-composer-card],
+[data-dsh-aqua] [data-dsh-inputbar] {
+  --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-composer, var(--dsh-aqua-hint-c-base)) calc(var(--dsh-aqua-hint-o-composer, 0.92) * 100%), transparent);
+  --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-c-composer, var(--dsh-aqua-hint-cc-base)) calc(var(--dsh-aqua-hint-o-composer, 0.92) * 100%), transparent);
+}/* Weight follows the colour range: the layer marks every node it finds painting
+   with the explanatory tokens, and these rules give those nodes their weight. */
+[data-dsh-aqua] [data-dsh-aqua-hint='sidebar'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-sidebar, 400) !important; }
+[data-dsh-aqua] [data-dsh-aqua-hint='header'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-header, 400) !important; }
+[data-dsh-aqua] [data-dsh-aqua-hint='chat'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-chat, 400) !important; }
+[data-dsh-aqua] [data-dsh-aqua-hint='composer'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-composer, 400) !important; }
+[data-dsh-aqua] [data-dsh-aqua-hint='rightbar'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-rightbar, 400) !important; }
+
+/* Sidebar group heading ("工作区" / Workspace).
+   Two things were recolouring it: the per-region explanatory override rewrites
+   label-tertiary / label-caption inside the sidebar, and the colour scheme also
+   repaints --dsw-alias-brand-primary (which this heading apparently rides — that
+   is why it looked accent-cyan rather than heading-grey). Pin the heading back to
+   the secondary label, the one label token no region rule touches. */
+[data-dsh-aqua] [class*='sidebarCol'] :is(
+  [class*='_workspaceRow'],
+  [class*='_workspaceLabel'],
+  [class*='_workspaceTitle'],
+  [class*='_groupTitle'],
+  [class*='_groupHeader'],
+  [class*='_groupLabel'],
+  [class*='_sectionTitle'],
+  [class*='_sectionHeader'],
+  [class*='_listTitle'],
+  [class*='_listHeader'],
+  [class*='_hgroupTitle']
+) {
+  color: var(--dsw-alias-label-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* Broader net for the sidebar's group header row: it is rendered by the
+   conversation list as a header/toolbar pair, and its label is the element that
+   kept picking up the explanatory colour. */
+[data-dsh-aqua] [class*='sidebarCol'] :is(
+  [class*='_header'] [class*='_title'],
+  [class*='_header'] [class*='_label'],
+  [class*='_toolbar'] [class*='_title'],
+  [class*='_toolbar'] [class*='_label'],
+  [class*='_bar'] [class*='_title']
+) {
+  color: var(--dsw-alias-label-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* The heading's action buttons (search / sort / new) must not inherit the
+   explanatory treatment either. */
+[data-dsh-aqua] [class*='sidebarCol'] :is(
+  [class*='_workspaceRow'],
+  [class*='_groupHeader'],
+  [class*='_sectionHeader']
+) :is(button, svg) {
+  color: inherit !important;
+  opacity: 1 !important;
 }

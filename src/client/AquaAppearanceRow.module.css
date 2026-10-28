@@ -247,3 +247,930 @@
 .deleteButton:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
+
+/* Font family input with dropdown presets. */
+.fontFamilyWrap {
+  width: 100%;
+}
+
+.fontFamilyInputWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.fontFamilyInput {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  width: 100%;
+}
+
+.fontFamilyInput:focus {
+  outline: none;
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 2px var(--dsw-alias-state-business-tertiary);
+}
+
+.fontFamilyPresets {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--dsh-aqua-glass-menu-light);
+  backdrop-filter: blur(18px) saturate(1.05);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(19, 45, 83, 0.15);
+  z-index: 10;
+}
+
+body[data-ds-dark-theme] .fontFamilyPresets {
+  background: var(--dsh-aqua-glass-menu-dark);
+  box-shadow: 0 8px 24px rgba(2, 6, 14, 0.4);
+}
+
+.fontFamilyPreset {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fontFamilyPreset:hover,
+.fontFamilyPreset:focus {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.fontFamilyPreset[aria-selected="true"] {
+  color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-state-business-tertiary);
+}
+
+/* Color picker: hex input + native color picker. */
+.colorPickerWrap {
+  width: 100%;
+}
+
+.colorInputWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.colorHexInput {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  width: 100%;
+}
+
+.colorHexInput:focus {
+  outline: none;
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 2px var(--dsw-alias-state-business-tertiary);
+}
+
+.colorPickerInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Select for enum values (font smoothing, etc.). */
+.select {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237E93AC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 32px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 2px var(--dsw-alias-state-business-tertiary);
+}
+
+/* ---------- Typography group controls ---------- */
+
+/* One control plus its reset button. */
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Small "back to default" affordance, one per font setting. */
+.resetBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.16s var(--ds-ease-in-out), border-color 0.16s var(--ds-ease-in-out);
+}
+
+.resetBtn:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+/* Palette swatches: two-tone dot per preset, name beside it. */
+.paletteList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.paletteItem:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.paletteItemActive {
+  border-color: var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-primary);
+}
+
+.paletteSwatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+/* Import entry + imported-font list. */
+.importBtn {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.importBtn:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.fontList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.fontListItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.fontListName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fontDelete {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.fontDelete:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* ---------- Collapsible groups ---------- */
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.groupHead:hover {
+  color: var(--dsw-alias-label-primary);
+  border-bottom-color: var(--dsw-alias-border-l3);
+}
+
+.groupChevron {
+  flex: none;
+  width: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  transition: transform 0.16s var(--ds-ease-in-out);
+}
+
+.groupChevron[data-open='true'] {
+  transform: rotate(0deg);
+}
+
+.groupChevron[data-open='false'] {
+  transform: rotate(-90deg);
+}
+
+.groupTitle {
+  flex: none;
+}
+
+/* Collapsed summary: the value the group holds, right-aligned and muted. */
+.groupSummary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Sub-section heading inside a collapsible group. */
+.miniTitle {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Font picker (popover list) ---------- */
+
+.fontPicker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fontPickerTrigger {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fontPickerTrigger:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.fontPickerValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fontPickerArrow {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+}
+
+/* Popover list: grows downward, scrolls once the font list gets long. */
+.fontPickerList {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 102px;
+  right: 0;
+  z-index: 40;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.fontOption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+
+.fontOption:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.fontOptionActive {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.fontOptionPick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fontOptionLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fontBadge {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.fontOptionDelete {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.fontOptionDelete:hover {
+  background: var(--dsw-alias-interactive-bg-hover-danger, rgb(200 60 60 / 12%));
+  color: var(--dsw-alias-label-error, #c33);
+}
+
+/* Footer: restore the host default for this role in one click. */
+.fontRestoreAll {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 6px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.fontRestoreAll:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+/* ---------- Colour-scheme cards ---------- */
+
+.paletteBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.paletteGrid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.paletteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.paletteCard:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.paletteCardActive {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary);
+}
+
+/* The "Aa" sample IS the scheme: it renders in that scheme's own ink. */
+.paletteAa {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.paletteName {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Three dots: secondary / hint / accent. */
+.paletteDots {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.paletteDots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 12%);
+}
+
+/* ---------- Hover preview bubble ---------- */
+
+.fieldRow {
+  position: relative;
+}
+
+/* Hidden until the row is hovered or a child takes focus. */
+.previewBubble {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 10px 26px rgb(0 0 0 / 16%);
+  pointer-events: none;
+}
+
+.fieldRow:hover > .previewBubble,
+.fieldRow:focus-within > .previewBubble {
+  display: block;
+}
+
+.previewSample {
+  display: block;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.previewAccent {
+  display: block;
+  margin-top: 2px;
+  color: var(--dsw-alias-link);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+/* ---------- Region weight rows ---------- */
+
+.regionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.regionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Region name column, then the two weight pickers. */
+.regionName {
+  flex: none;
+  width: 72px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.regionCol {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.weightSelect {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.weightSelect:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+/* Panel notes follow the explanatory-text knobs too. */
+.knobHint,
+.groupSummary,
+.miniTitle,
+.paletteName,
+.fontBadge {
+  font-family: var(--dsh-aqua-hint-family, inherit);
+  font-weight: var(--dsh-aqua-hint-weight, 400);
+  opacity: var(--dsh-aqua-hint-opacity, 0.8);
+}
+
+/* ---------- Explanatory colour dots ---------- */
+
+.colorDotsRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.colorDots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.colorDot {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 50%;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colorDot:hover {
+  transform: scale(1.1);
+}
+
+.colorDotActive {
+  box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
+}
+
+/* ---------- Glass surfaces for the panel chrome ----------
+   Every group header, preview bubble and picker is a small pane of the same
+   glass the app uses: translucent fill + a blur that tracks the 玻璃模糊度 knob
+   (--dsh-aqua-blur is written on <html> by the layer), so the wallpaper shows
+   through and the panel matches the theme instead of sitting on it. ---------- */
+
+.groupHead,
+.previewBubble,
+.fontPickerTrigger,
+.fontPickerList,
+.weightSelect,
+.importBtn,
+.fontRestoreAll {
+  background-color: var(--dsh-aqua-glass-menu-light, rgb(255 255 255 / 42%));
+  backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+}
+
+body[data-ds-dark-theme] .groupHead,
+body[data-ds-dark-theme] .previewBubble,
+body[data-ds-dark-theme] .fontPickerTrigger,
+body[data-ds-dark-theme] .fontPickerList,
+body[data-ds-dark-theme] .weightSelect,
+body[data-ds-dark-theme] .importBtn,
+body[data-ds-dark-theme] .fontRestoreAll {
+  background-color: var(--dsh-aqua-glass-menu-dark, rgb(18 26 38 / 46%));
+}
+
+/* Group header as a small glass block. */
+.groupHead {
+  padding: 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 22%) inset;
+}
+
+.groupHead:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+/* Nested groups (the five regions) read one step lighter. */
+.groupHead .groupHead,
+.subGroup .subGroup .groupHead {
+  padding: 5px 8px;
+  border-radius: 8px;
+}
+
+/* Preview bubble: same glass, height follows its content (no fixed height,
+   no max-height) so a two-line sample never leaves a tall empty pane. */
+.previewBubble {
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 14%);
+  width: max-content;
+  max-width: min(100%, 320px);
+}
+
+/* Pickers sit IN the glass instead of cutting opaque holes in it. */
+.fontPickerTrigger,
+.weightSelect,
+.importBtn,
+.fontRestoreAll {
+  border: 1px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-primary);
+}
+
+.fontPickerList {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+}
+
+/* ---------- Multi-column panel ----------
+   `auto-fit` keeps the menu short on a wide panel and collapses back to a
+   single column when the sidebar is narrow — no fixed breakpoints to maintain. */
+.group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.subGroup {
+  min-width: 0;
+}
+
+/* Full-width row (the appearance switch spans every column). */
+.spanAll {
+  grid-column: 1 / -1;
+}
+
+/* Tab pages span the full panel width — one group is mounted at a time, so a
+   single-column page must not sit in a third of a multi-column grid. */
+.group > .subGroup {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Card-style tab bar ----------
+   Each group is a small glass card; the active one gets an accent ring and a
+   brighter fill, so the current page is obvious at a glance. The bar scrolls
+   horizontally instead of wrapping, which keeps the page height stable. ---------- */
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabBar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabCard {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background-color: var(--dsh-aqua-glass-menu-light, rgb(255 255 255 / 42%));
+  backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s var(--ds-ease-in-out),
+              border-color 0.16s var(--ds-ease-in-out),
+              box-shadow 0.16s var(--ds-ease-in-out);
+}
+
+.tabCard:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+/* Selected: accent ring + accent text + a touch more lift. */
+/* The accent can be a LIGHT colour (dark schemes use bright accents), and white
+   text on it was unreadable. Mixing the accent with a near-black keeps the fill
+   recognisably accent-coloured while guaranteeing contrast against white. */
+.tabCardActive,
+.tabCardActive:hover {
+  background-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 68%, #0B1220);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 68%, #0B1220);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%), 0 3px 12px rgb(0 0 0 / 22%);
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 28%);
+}
+
+body[data-ds-dark-theme] .tabCard {
+  background-color: var(--dsh-aqua-glass-menu-dark, rgb(18 26 38 / 46%));
+}
+
+/* Must come AFTER the dark-idle rule: same specificity, later wins. */
+body[data-ds-dark-theme] .tabCardActive,
+body[data-ds-dark-theme] .tabCardActive:hover {
+  background-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 62%, #05080E);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 62%, #05080E);
+}
+
+/* Weight pickers read as glass, not as native chrome: kill the platform
+   styling so the translucent fill and blur actually show. */
+.weightSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 38%, transparent) !important;
+  background-image: linear-gradient(45deg, transparent 50%, var(--dsw-alias-label-tertiary) 50%),
+                    linear-gradient(135deg, var(--dsw-alias-label-tertiary) 50%, transparent 50%);
+  background-position: calc(100% - 12px) calc(50% - 1px), calc(100% - 8px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 20px;
+  backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+}
+
+body[data-ds-dark-theme] .weightSelect {
+  background-color: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 42%, transparent) !important;
+}
+
+/* The dropdown list itself is native chrome — tint it as close as we can. */
+.weightSelect option {
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Plain text button (the region group's 一键还原). */
+.textBtn {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  transition: color 0.16s var(--ds-ease-in-out), border-color 0.16s var(--ds-ease-in-out);
+}
+
+.textBtn:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
