@@ -24,12 +24,50 @@ import css from './AquaAppearanceRow.module.css'
 
 /** Font-weight stops: these sliders move in 100s, there is nothing in between. */
 const WEIGHT_TICKS = [300, 400, 500, 600, 700, 800] as const
+
 /**
- * Hint strength moves in 5% steps (13 stops). Labelling all of them would
- * overlap on a ~250px track, so every other stop carries the number — the
- * slider still lands on the unlabelled ones.
+ * Panel groups, in tab order, with the copy key each one uses. Single source
+ * for the tab bar AND for restoring the remembered tab — a group present in one
+ * list but not the other would render a dead tab or restore to one.
  */
-const OPACITY_TICKS = [40, 50, 60, 70, 80, 90, 100] as const
+const PANEL_TABS = [
+  { id: 'glass', label: 'aqua.materialGroup' },
+  { id: 'background', label: 'aqua.background' },
+  { id: 'fonts', label: 'aqua.typographyGroup' },
+  { id: 'colors', label: 'aqua.colorGroup' },
+  { id: 'regions', label: 'aqua.regionsGroup' },
+  { id: 'decor', label: 'aqua.decorGroup' },
+] as const satisfies ReadonlyArray<{ id: string, label: AquaLocaleKey }>
+
+/** One selectable group page. */
+type PanelTab = typeof PANEL_TABS[number]['id']
+
+/** localStorage key holding the tab to reopen on. */
+const PANEL_TAB_KEY = 'dsh.ui-aqua.panelTab'
+
+/**
+ * The group the panel was last left on. Unknown ids (an older/newer build, a
+ * hand-edited key) fall back to 背景 instead of rendering nothing.
+ * @returns the tab to open with.
+ */
+function readPanelTab(): PanelTab {
+  try {
+    const raw = localStorage.getItem(PANEL_TAB_KEY)
+    const hit = PANEL_TABS.find(item => item.id === raw)
+    return hit?.id ?? 'background'
+  } catch {
+    return 'background'
+  }
+}
+
+/** Persist the group so the next open lands on it. */
+function writePanelTab(tab: PanelTab): void {
+  try {
+    localStorage.setItem(PANEL_TAB_KEY, tab)
+  } catch {
+    /* a storage-less profile still works for this session */
+  }
+}
 
 /** Detect if running in Electron renderer. */
 function isElectron(): boolean {
@@ -219,33 +257,18 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const videoRef = useRef<HTMLInputElement | null>(null)
   const fontFileRef = useRef<HTMLInputElement | null>(null)
   const [importedFonts, setImportedFonts] = useState<ImportedFont[]>([])
-  /* Card-style tab switcher: exactly one group page is mounted at a time.
-     Defaults to the background group, which is the one the user tunes most. */
-  const [tab, setTab] = useState('background')
-  const rootRef = useRef<HTMLDivElement | null>(null)
+  /* Card-style tab switcher: exactly one group page is mounted at a time, and
+     the choice is remembered — reopening lands on the group the user was last
+     in instead of always snapping back to 背景. */
+  const [tab, setTab] = useState<PanelTab>(readPanelTab)
+  const selectTab = (next: PanelTab): void => {
+    setTab(next)
+    writePanelTab(next)
+  }
   /* Fold flags for the nested region cards. The top-level groups are not
      collapsible: the tab bar already shows exactly one of them, so their
      headers are hidden and an `open` flag there could never be read. */
   const [openRegionMap, setOpenRegionMap] = useState<Record<string, boolean>>({})
-
-  // The sidebar keeps this page mounted while another page is shown, so the
-  // `useState` default never re-runs — coming back used to land on whatever tab
-  // was left open. Re-entering the viewport IS "opening the page again" from
-  // inside the component; when the host unmounts instead, the default applies
-  // anyway. (Window minimising also toggles intersection, which is why the
-  // reset only fires on the hidden → shown edge.)
-  useEffect(() => {
-    const element = rootRef.current
-    if (element === null || typeof IntersectionObserver === 'undefined') return
-    let shown = true
-    const observer = new IntersectionObserver((entries) => {
-      const next = entries.some(entry => entry.isIntersecting)
-      if (next && !shown) setTab('background')
-      shown = next
-    })
-    observer.observe(element)
-    return () => { observer.disconnect() }
-  }, [])
 
   // Videos are `idb:` blobs, `fsa:` remembered-file handles, or legacy
   // `data:video/` URLs.
@@ -451,7 +474,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   ]
 
   return (
-    <div className={css.group} ref={rootRef}>
+    <div className={css.group}>
       {/* 外观：与「设置 → 外观」同一个开关，不折叠 */}
       <section className={`${css.subGroup} ${css.spanAll}`}>
         <div className={css.subTitle}>{t('aqua.appearance')}</div>
@@ -475,15 +498,8 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         <TabBar
           label={t('aqua.title')}
           value={tab}
-          onChange={setTab}
-          items={[
-            { id: 'glass', label: t('aqua.materialGroup') },
-            { id: 'background', label: t('aqua.background') },
-            { id: 'fonts', label: t('aqua.typographyGroup') },
-            { id: 'colors', label: t('aqua.colorGroup') },
-            { id: 'regions', label: t('aqua.regionsGroup') },
-            { id: 'decor', label: t('aqua.decorGroup') },
-          ]}
+          onChange={(id) => { selectTab(id as PanelTab) }}
+          items={PANEL_TABS.map(item => ({ id: item.id, label: t(item.label) }))}
         />
       </div>
 
@@ -706,7 +722,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
         </div>
         <div className={css.fieldRow}>
-          <Knob label={t('aqua.hintOpacity')} value={hintOpacity} min={40} max={100} step={5} unit="%" ticks={OPACITY_TICKS} onChange={setHintOpacity} />
+          <Knob label={t('aqua.hintOpacity')} value={hintOpacity} min={40} max={100} step={5} unit="%" onChange={setHintOpacity} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
         </div>
         <div className={css.knobHint}>{t('aqua.hintGroupHint')}</div>
@@ -834,7 +850,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
                 <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setRegionHintNumber(region.key, 'weight', 400) }} />
               </div>
               <div className={css.fieldRow}>
-                <Knob label={t('aqua.hintOpacity')} value={region.hintO} min={40} max={100} step={5} unit="%" ticks={OPACITY_TICKS} onChange={(value) => { setRegionHintNumber(region.key, 'opacity', value) }} />
+                <Knob label={t('aqua.hintOpacity')} value={region.hintO} min={40} max={100} step={5} unit="%" onChange={(value) => { setRegionHintNumber(region.key, 'opacity', value) }} />
                 <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setRegionHintNumber(region.key, 'opacity', 92) }} />
               </div>
               <div className={css.fieldRow}>
