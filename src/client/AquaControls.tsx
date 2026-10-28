@@ -4,7 +4,7 @@
  * list that can delete imported faces and restore defaults), the colour-scheme
  * cards, the hover preview bubble, and the wallpaper file reader.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import css from './AquaAppearanceRow.module.css'
 
@@ -22,6 +22,28 @@ export interface KnobProps {
 /** Render one knob row. */
 export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps) {
   const clamp = (n: number) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))
+  // The number box keeps its own draft while it has focus. Writing every
+  // keystroke straight through clamped "1" to the minimum before "18" could be
+  // finished, and an empty box became 0 → min. The draft is committed on blur
+  // or Enter, and re-synced whenever the real value changes from elsewhere
+  // (slider, reset button, another window).
+  const [draft, setDraft] = useState(String(value))
+  const [editing, setEditing] = useState(false)
+  useEffect(() => {
+    if (!editing) setDraft(String(value))
+  }, [value, editing])
+
+  const commit = (raw: string): void => {
+    const parsed = Number(raw)
+    if (raw.trim() === '' || !Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    const next = clamp(parsed)
+    setDraft(String(next))
+    if (next !== value) onChange(next)
+  }
+
   return (
     <label className={css.knob}>
       <span className={css.knobLabel}>{label}</span>
@@ -41,8 +63,13 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
           min={min}
           max={max}
           step={step}
-          value={value}
-          onChange={(e) => { onChange(clamp(Number(e.target.value))) }}
+          value={draft}
+          onFocus={() => { setEditing(true) }}
+          onChange={(e) => { setDraft(e.target.value) }}
+          onBlur={(e) => { setEditing(false); commit(e.target.value) }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
         />
         <span className={css.unit}>{unit}</span>
       </span>
@@ -190,28 +217,71 @@ export interface FontPickerProps {
  * Font-family picker. A native `<select>` cannot host per-row actions, so the
  * list is a popover of buttons: imported faces get a delete affordance and the
  * footer restores the host default in one click.
+ *
+ * The list is positioned against the viewport (fixed) rather than its trigger:
+ * the panel lives inside `overflow: auto`, which used to clip the popover as
+ * soon as the trigger sat near the bottom of the scroll area. Space below is
+ * measured, and the list flips upward when there is not enough of it.
  */
 export function FontPicker({ label, value, options, onChange, onRestore, restoreLabel, deleteLabel }: FontPickerProps) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [placement, setPlacement] = useState<
+    { left: number, width: number, top: number } | { left: number, width: number, bottom: number, maxHeight: number } | null
+  >(null)
   const current = options.find(option => option.id === value) ?? options[0]
+
+  // Measure on open (and on resize, below) so the popover never leaves the viewport.
+  useLayoutEffect(() => {
+    if (!open) { setPlacement(null); return }
+    const trigger = triggerRef.current
+    if (trigger === null) return
+    const box = trigger.getBoundingClientRect()
+    const below = window.innerHeight - box.bottom - 8
+    const above = box.top - 8
+    if (below < 280 && above > below) {
+      setPlacement({ left: box.left, width: box.width, bottom: window.innerHeight - box.top + 4, maxHeight: Math.min(320, Math.max(160, above)) })
+    } else {
+      setPlacement({ left: box.left, width: box.width, top: box.bottom + 4 })
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const onPointerDown = (event: MouseEvent) => {
       if (wrapRef.current !== null && !wrapRef.current.contains(event.target as Node)) setOpen(false)
     }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    // Scrolling the panel would detach a fixed popover from its trigger; close
+    // instead of tracking (except for scrolling inside the list itself).
+    const onScroll = (event: Event) => {
+      if (listRef.current !== null && event.target instanceof Node && listRef.current.contains(event.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', onPointerDown)
-    return () => { document.removeEventListener('mousedown', onPointerDown) }
+    document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
   }, [open])
 
   return (
     <div className={css.fontPicker} ref={wrapRef}>
       <span className={css.knobLabel}>{label}</span>
       <button
+        ref={triggerRef}
         type="button"
         className={css.fontPickerTrigger}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => { setOpen(prev => !prev) }}
       >
@@ -221,16 +291,31 @@ export function FontPicker({ label, value, options, onChange, onRestore, restore
       </button>
 
       {open && (
-        <div className={css.fontPickerList} role="listbox">
+        <div
+          ref={listRef}
+          className={css.fontPickerList}
+          role="menu"
+          aria-label={label}
+          style={placement === null
+            ? undefined
+            : {
+              position: 'fixed',
+              left: placement.left,
+              right: 'auto',
+              width: placement.width,
+              ...('top' in placement
+                ? { top: placement.top, bottom: 'auto' }
+                : { top: 'auto', bottom: placement.bottom, maxHeight: placement.maxHeight }),
+            }}
+        >
           {options.map(option => (
-            <div
-              key={option.id}
-              className={option.id === value ? `${css.fontOption} ${css.fontOptionActive}` : css.fontOption}
-            >
+            // `role="none"` keeps the wrapper out of the accessibility tree so
+            // the menu's owned elements are the buttons themselves.
+            <div key={option.id} role="none" className={option.id === value ? `${css.fontOption} ${css.fontOptionActive}` : css.fontOption}>
               <button
                 type="button"
-                role="option"
-                aria-selected={option.id === value}
+                role="menuitemradio"
+                aria-checked={option.id === value}
                 className={css.fontOptionPick}
                 onClick={() => { onChange(option.id); setOpen(false) }}
               >
@@ -240,6 +325,7 @@ export function FontPicker({ label, value, options, onChange, onRestore, restore
               {option.onDelete !== undefined && (
                 <button
                   type="button"
+                  role="menuitem"
                   className={css.fontOptionDelete}
                   title={deleteLabel}
                   aria-label={deleteLabel}
@@ -251,7 +337,7 @@ export function FontPicker({ label, value, options, onChange, onRestore, restore
             </div>
           ))}
           {onRestore !== undefined && (
-            <button type="button" className={css.fontRestoreAll} onClick={() => { onRestore(); setOpen(false) }}>
+            <button type="button" role="menuitem" className={css.fontRestoreAll} onClick={() => { onRestore(); setOpen(false) }}>
               {restoreLabel}
             </button>
           )}
@@ -443,8 +529,20 @@ export function ResetButton({ label, title, onClick }: ResetButtonProps) {
   )
 }
 
-/** Read a file, downscale to ≤1920px, and return a compact JPEG data URL. */
+/** Largest wallpaper file we accept before decoding it into memory. */
+const MAX_WALLPAPER_BYTES = 32 * 1024 * 1024
+
+/**
+ * Read a file, downscale to ≤1920px, and return a compact data URL.
+ *
+ * JPEG has no alpha channel, so a transparent PNG used to come out on a black
+ * plate. WebP keeps the alpha (and is smaller); when the browser cannot encode
+ * it we flatten onto white rather than leaving the canvas black.
+ * @param file - the picked image.
+ * @returns the data URL.
+ */
 export async function fileToDataUrl(file: File): Promise<string> {
+  if (file.size > MAX_WALLPAPER_BYTES) throw new Error('wallpaper too large')
   const raw = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => { resolve(String(reader.result)) }
@@ -457,14 +555,28 @@ export async function fileToDataUrl(file: File): Promise<string> {
     im.onerror = () => { reject(new Error('image load failed')) }
     im.src = raw
   })
-  const scale = Math.min(1, 1920 / Math.max(image.width, image.height))
-  const w = Math.max(1, Math.round(image.width * scale))
-  const h = Math.max(1, Math.round(image.height * scale))
+  // An SVG without intrinsic dimensions reports 0 — keep a sane canvas size
+  // instead of producing a 1x1 wallpaper.
+  const sourceWidth = image.naturalWidth > 0 ? image.naturalWidth : 1920
+  const sourceHeight = image.naturalHeight > 0 ? image.naturalHeight : 1080
+  const scale = Math.min(1, 1920 / Math.max(sourceWidth, sourceHeight))
+  const w = Math.max(1, Math.round(sourceWidth * scale))
+  const h = Math.max(1, Math.round(sourceHeight * scale))
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d')
   if (ctx === null) return raw
   ctx.drawImage(image, 0, 0, w, h)
-  return canvas.toDataURL('image/jpeg', 0.82)
+  const webp = canvas.toDataURL('image/webp', 0.85)
+  if (webp.startsWith('data:image/webp')) return webp
+  const flat = document.createElement('canvas')
+  flat.width = w
+  flat.height = h
+  const flatCtx = flat.getContext('2d')
+  if (flatCtx === null) return canvas.toDataURL('image/jpeg', 0.82)
+  flatCtx.fillStyle = '#ffffff'
+  flatCtx.fillRect(0, 0, w, h)
+  flatCtx.drawImage(image, 0, 0, w, h)
+  return flat.toDataURL('image/jpeg', 0.82)
 }

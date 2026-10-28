@@ -33,6 +33,7 @@ export const zh = {
   'aqua.backgroundFluid': '流体',
   'aqua.backgroundWallpaper': '壁纸',
   'aqua.wallpaper': '壁纸',
+  'aqua.wallpaperFailed': '图片读取失败：文件超过 32 MB 或格式不受支持',
   'aqua.wallpaperHint': '浅色壁纸用浅色模式，深色壁纸用深色模式⚠️',
   'aqua.chooseImage': '选择图片',
   'aqua.chooseVideo': '选择视频',
@@ -41,6 +42,7 @@ export const zh = {
   'aqua.wallpaperFrost': '壁纸磨砂度',
   'aqua.videoBlur': '视频模糊度',
   'aqua.videoBrightness': '视频亮度',
+  'aqua.videoSaveFailed': '视频无法保存（可能超出存储配额），请换更小的文件',
   'aqua.videoHint': '⚠️视频会自动压暗以保证文字清晰，可用模糊度和亮度调节；刷新后未自动播放时点一下“选择视频”即可恢复',
   /* Typography — plain-language copy */
   'aqua.typographyGroup': '字体字号',
@@ -161,6 +163,7 @@ export const en = {
   'aqua.backgroundFluid': 'Fluid',
   'aqua.backgroundWallpaper': 'Wallpaper',
   'aqua.wallpaper': 'Wallpaper',
+  'aqua.wallpaperFailed': 'Could not read that image — over 32 MB or an unsupported format',
   'aqua.wallpaperHint': 'Use light mode for light wallpapers, dark mode for dark wallpapers ⚠️',
   'aqua.chooseImage': 'Choose image',
   'aqua.chooseVideo': 'Choose video',
@@ -169,6 +172,7 @@ export const en = {
   'aqua.wallpaperFrost': 'Wallpaper frost',
   'aqua.videoBlur': 'Video blur',
   'aqua.videoBrightness': 'Video brightness',
+  'aqua.videoSaveFailed': 'Could not store that video (out of quota?) — try a smaller file',
   'aqua.videoHint': '⚠️ The video is dimmed automatically to keep text readable — adjust blur and brightness here; if it does not play after a reload, click "Choose video" once to restore access',
   /* Typography — plain-language copy */
   'aqua.typographyGroup': 'Font & size',

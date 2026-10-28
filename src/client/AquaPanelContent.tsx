@@ -199,6 +199,12 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const hintColorComposer = useStore(s => s.hintColorComposer)
   const paletteChat = useStore(s => s.paletteChat)
 
+  /** Read a picked image; `fileToDataUrl` rejects on oversize / undecodable files. */
+  const applyImage = (file: File): void => {
+    setBackground('wallpaper')
+    void fileToDataUrl(file).then(setWallpaper).catch(() => { window.alert(t('aqua.wallpaperFailed')) })
+  }
+
   const fileRef = useRef<HTMLInputElement | null>(null)
   const videoRef = useRef<HTMLInputElement | null>(null)
   const fontFileRef = useRef<HTMLInputElement | null>(null)
@@ -236,7 +242,10 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
             const file = await handle.getFile()
             void saveVideoBlob(file).then((id) => {
               if (id !== '') setWallpaper(id)
-              else void fileToDataUrl(file).then(setWallpaper)
+              // `fileToDataUrl` decodes IMAGES; handing it a video only ever
+              // produced a silent rejection (and a multi-MB data URL if it had
+              // worked, which localStorage cannot hold).
+              else window.alert(t('aqua.videoSaveFailed'))
             })
           }
         } catch {
@@ -501,8 +510,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (file !== undefined) {
-                      setBackground('wallpaper')
-                      void fileToDataUrl(file).then(setWallpaper)
+                      applyImage(file)
                     }
                     e.target.value = ''
                   }}
@@ -518,7 +526,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
                       setBackground('wallpaper')
                       void saveVideoBlob(file).then((id) => {
                         if (id !== '') setWallpaper(id)
-                        else void fileToDataUrl(file).then(setWallpaper)
+                        else window.alert(t('aqua.videoSaveFailed'))
                       })
                     }
                     e.target.value = ''
