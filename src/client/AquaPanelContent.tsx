@@ -179,8 +179,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const weightHeadingChat = useStore(s => s.weightHeadingChat)
   const weightBodyComposer = useStore(s => s.weightBodyComposer)
   const weightHeadingComposer = useStore(s => s.weightHeadingComposer)
-  const weightBodyStats = useStore(s => s.weightBodyStats)
-  const weightHeadingStats = useStore(s => s.weightHeadingStats)
   const hintWeight = useStore(s => s.hintWeight)
   const hintOpacity = useStore(s => s.hintOpacity)
   const hintFont = useStore(s => s.hintFont)
@@ -199,14 +197,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const hintWeightComposer = useStore(s => s.hintWeightComposer)
   const hintOpacityComposer = useStore(s => s.hintOpacityComposer)
   const hintColorComposer = useStore(s => s.hintColorComposer)
-  const hintWeightStats = useStore(s => s.hintWeightStats)
-  const hintOpacityStats = useStore(s => s.hintOpacityStats)
-  const hintColorStats = useStore(s => s.hintColorStats)
-  const weightBodyRightbar = useStore(s => s.weightBodyRightbar)
-  const weightHeadingRightbar = useStore(s => s.weightHeadingRightbar)
-  const hintWeightRightbar = useStore(s => s.hintWeightRightbar)
-  const hintOpacityRightbar = useStore(s => s.hintOpacityRightbar)
-  const hintColorRightbar = useStore(s => s.hintColorRightbar)
   const paletteChat = useStore(s => s.paletteChat)
 
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -216,13 +206,10 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   /* Card-style tab switcher: exactly one group page is mounted at a time.
      Defaults to the background group, which is the one the user tunes most. */
   const [tab, setTab] = useState('background')
-  /* One fold flag per group; appearance stays pinned above them. */
-  const [openGlass, setOpenGlass] = useState(true)
-  const [openBackground, setOpenBackground] = useState(true)
-  const [openRegions, setOpenRegions] = useState(true)
+  /* Fold flags for the nested region cards. The top-level groups are not
+     collapsible: the tab bar already shows exactly one of them, so their
+     headers are hidden and an `open` flag there could never be read. */
   const [openRegionMap, setOpenRegionMap] = useState<Record<string, boolean>>({})
-  const [openFonts, setOpenFonts] = useState(true)
-  const [openDecor, setOpenDecor] = useState(false)
 
   // Videos are `idb:` blobs, `fsa:` remembered-file handles, or legacy
   // `data:video/` URLs.
@@ -424,14 +411,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
     ...pickerOptions(textFontOptions).slice(1),
   ]
 
-  /** Collapsed summaries so the closed groups still report their state. */
-  const glassSummary = `${Math.round(blur)}px · ${Math.round(frost)}%`
-  const backgroundSummary = background === 'fluid' ? t('aqua.backgroundFluid') : t('aqua.wallpaper')
-  const fontSummary = `${optionLabel(TEXT_FONT_PRESETS.find(item => item.stack === fontText) ?? TEXT_FONT_PRESETS[0])} · ${fontSizeText}px`
-  const decorSummary = [whale && t('aqua.whale'), critters && t('aqua.critters'), mesh && t('aqua.mesh')]
-    .filter(Boolean)
-    .join(' · ')
-
   return (
     <div className={css.group}>
       {/* 外观：与「设置 → 外观」同一个开关，不折叠 */}
@@ -475,8 +454,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'glass'}
         hideHeader
-        onToggle={() => { setOpenGlass(!openGlass) }}
-        summary={glassSummary}
       >
         <Knob label={t('aqua.blur')} value={blur} min={0} max={40} step={0.5} unit="px" onChange={setBlur} />
         <Knob label={t('aqua.frost')} value={frost} min={0} max={100} step={1} unit="%" onChange={setFrost} />
@@ -491,8 +468,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'background'}
         hideHeader
-        onToggle={() => { setOpenBackground(!openBackground) }}
-        summary={backgroundSummary}
       >
         <div className={css.row}>
           <Segmented
@@ -593,8 +568,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'fonts'}
         hideHeader
-        onToggle={() => { setOpenFonts(!openFonts) }}
-        summary={fontSummary}
       >
         {/* 字体 */}
         <div className={css.miniTitle}>{t('aqua.fontText')} / {t('aqua.fontCode')}</div>
@@ -709,7 +682,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'colors'}
         hideHeader
-        onToggle={() => {}}
       >
         <div className={css.fieldRow}>
           <PalettePicker
@@ -774,7 +746,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'regions'}
         hideHeader
-        onToggle={() => { setOpenRegions(!openRegions) }}
         summary={t('aqua.regionWeights')}
       >
         {regionRows.map(region => {
@@ -841,6 +812,14 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
                 />
                 <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setRegionHintColor(region.key, '') }} />
               </div>
+              {/* One click puts the whole region back — the injected reset was
+                  already implemented but had no control pointing at it. */}
+              <div className={css.fieldRow}>
+                <span className={css.knobHint}>{t('aqua.regionResetHint')}</span>
+                <button type="button" className={css.textBtn} onClick={() => { resetRegion(region.key) }}>
+                  {t('aqua.regionReset')}
+                </button>
+              </div>
             </Collapsible>
           )
         })}
@@ -862,8 +841,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         open
         visible={tab === 'decor'}
         hideHeader
-        onToggle={() => { setOpenDecor(!openDecor) }}
-        summary={decorSummary}
       >
         <div className={css.miniTitle}>{t('aqua.decorAmbient')}</div>
         <div className={css.row}>

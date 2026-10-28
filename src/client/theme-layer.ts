@@ -76,6 +76,14 @@ const HINT_REGIONS: ReadonlyArray<readonly [string, string]> = [
   ['composer', '[data-composer-card], [data-dsh-inputbar]'],
 ]
 
+/**
+ * Shipped per-region explanatory values. They are deliberately NOT the global
+ * defaults: a region's small copy ships at 92% strength, the global knob at 80%.
+ * `resetRegion` used the global pair and therefore "reset" a region to a value
+ * it never shipped with.
+ */
+const REGION_HINT_DEFAULTS = { weight: 400, opacity: 92 } as const
+
 /** Override-stack source for the explanatory-text colour (layered above the palette). */
 const HINT_COLOR_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix/hint'
 
@@ -311,10 +319,6 @@ export interface AquaSettings {
   weightBodyComposer: number
   /** Heading weight inside the bottom composer. */
   weightHeadingComposer: number
-  /** Body weight inside the statistics dock. */
-  weightBodyStats: number
-  /** Heading weight inside the statistics dock. */
-  weightHeadingStats: number
   /* Explanatory / small copy: its own weight, strength and family. */
   /** Weight for explanatory text (300-800). */
   hintWeight: number
@@ -330,7 +334,7 @@ export interface AquaSettings {
   blurChat: number
   /** Blur radius for menu pages / feature pages, px. */
   blurPages: number
-  /* Per-region explanatory text: weight / strength / colour, five regions. */
+  /* Per-region explanatory text: weight / strength / colour, four regions. */
   hintWeightSidebar: number
   hintOpacitySidebar: number
   hintColorSidebar: string
@@ -343,15 +347,6 @@ export interface AquaSettings {
   hintWeightComposer: number
   hintOpacityComposer: number
   hintColorComposer: string
-  hintWeightStats: number
-  hintOpacityStats: number
-  hintColorStats: string
-  /* Right-side details panel of a session: its own pane, its own text. */
-  weightBodyRightbar: number
-  weightHeadingRightbar: number
-  hintWeightRightbar: number
-  hintOpacityRightbar: number
-  hintColorRightbar: string
   /* Conversation-only colour scheme (empty = follow the global font colour). */
   paletteChat: string
 }
@@ -400,8 +395,6 @@ const SETTINGS_DEFAULTS: AquaSettings = {
   weightHeadingChat: 0,
   weightBodyComposer: 0,
   weightHeadingComposer: 0,
-  weightBodyStats: 0,
-  weightHeadingStats: 0,
   hintWeight: 400,
   hintOpacity: 80,
   hintFont: '',
@@ -420,14 +413,6 @@ const SETTINGS_DEFAULTS: AquaSettings = {
   hintWeightComposer: 400,
   hintOpacityComposer: 92,
   hintColorComposer: '',
-  hintWeightStats: 400,
-  hintOpacityStats: 92,
-  hintColorStats: '',
-  weightBodyRightbar: 0,
-  weightHeadingRightbar: 0,
-  hintWeightRightbar: 400,
-  hintOpacityRightbar: 92,
-  hintColorRightbar: '',
   paletteChat: '',
 }
 
@@ -457,8 +442,6 @@ const NUMERIC_KEYS = {
   weightHeadingChat: 'dsh.ui-aqua.wHeadingChat',
   weightBodyComposer: 'dsh.ui-aqua.wBodyComposer',
   weightHeadingComposer: 'dsh.ui-aqua.wHeadingComposer',
-  weightBodyStats: 'dsh.ui-aqua.wBodyStats',
-  weightHeadingStats: 'dsh.ui-aqua.wHeadingStats',
   hintWeight: 'dsh.ui-aqua.hintWeight',
   hintOpacity: 'dsh.ui-aqua.hintOpacity',
   blurChat: 'dsh.ui-aqua.blurChat',
@@ -471,12 +454,6 @@ const NUMERIC_KEYS = {
   hintOpacityChat: 'dsh.ui-aqua.hintOChat',
   hintWeightComposer: 'dsh.ui-aqua.hintWComposer',
   hintOpacityComposer: 'dsh.ui-aqua.hintOComposer',
-  hintWeightStats: 'dsh.ui-aqua.hintWStats',
-  hintOpacityStats: 'dsh.ui-aqua.hintOStats',
-  weightBodyRightbar: 'dsh.ui-aqua.wBodyRightbar',
-  weightHeadingRightbar: 'dsh.ui-aqua.wHeadingRightbar',
-  hintWeightRightbar: 'dsh.ui-aqua.hintWRightbar',
-  hintOpacityRightbar: 'dsh.ui-aqua.hintORightbar',
 } as const
 type NumericKey = keyof typeof NUMERIC_KEYS
 
@@ -494,8 +471,6 @@ const STRING_KEYS = {
   hintColorHeader: 'dsh.ui-aqua.hintCHeader',
   hintColorChat: 'dsh.ui-aqua.hintCChat',
   hintColorComposer: 'dsh.ui-aqua.hintCComposer',
-  hintColorStats: 'dsh.ui-aqua.hintCStats',
-  hintColorRightbar: 'dsh.ui-aqua.hintCRightbar',
   paletteChat: 'dsh.ui-aqua.paletteChat',
 } as const
 type StringKey = keyof typeof STRING_KEYS
@@ -936,14 +911,6 @@ export class AquaLayer {
       hintWeightComposer: readSetting('hintWeightComposer'),
       hintOpacityComposer: readSetting('hintOpacityComposer'),
       hintColorComposer: readStringSetting('hintColorComposer'),
-      hintWeightStats: readSetting('hintWeightStats'),
-      hintOpacityStats: readSetting('hintOpacityStats'),
-      hintColorStats: readStringSetting('hintColorStats'),
-      weightBodyRightbar: readSetting('weightBodyRightbar'),
-      weightHeadingRightbar: readSetting('weightHeadingRightbar'),
-      hintWeightRightbar: readSetting('hintWeightRightbar'),
-      hintOpacityRightbar: readSetting('hintOpacityRightbar'),
-      hintColorRightbar: readStringSetting('hintColorRightbar'),
       paletteChat: readStringSetting('paletteChat'),
       lineHeight: readSetting('lineHeight'),
       weightBody: readSetting('weightBody'),
@@ -956,8 +923,6 @@ export class AquaLayer {
       weightHeadingChat: readSetting('weightHeadingChat'),
       weightBodyComposer: readSetting('weightBodyComposer'),
       weightHeadingComposer: readSetting('weightHeadingComposer'),
-      weightBodyStats: readSetting('weightBodyStats'),
-      weightHeadingStats: readSetting('weightHeadingStats'),
       hintWeight: readSetting('hintWeight'),
       hintOpacity: readSetting('hintOpacity'),
       hintFont: readStringSetting('hintFont'),
@@ -1458,16 +1423,16 @@ export class AquaLayer {
   resetRegion(region: RegionKey): void {
     this.setRegionWeight(region, 'body', 0)
     this.setRegionWeight(region, 'heading', 0)
-    this.setRegionHintNumber(region, 'weight', SETTINGS_DEFAULTS.hintWeight)
-    this.setRegionHintNumber(region, 'opacity', SETTINGS_DEFAULTS.hintOpacity)
+    this.setRegionHintNumber(region, 'weight', REGION_HINT_DEFAULTS.weight)
+    this.setRegionHintNumber(region, 'opacity', REGION_HINT_DEFAULTS.opacity)
     this.setRegionHintColor(region, '')
   }
 
   /** Restore every region's explanatory-text knobs. */
   resetRegionHints(): void {
     for (const region of REGIONS) {
-      this.setRegionHintNumber(region, 'weight', SETTINGS_DEFAULTS.hintWeight)
-      this.setRegionHintNumber(region, 'opacity', SETTINGS_DEFAULTS.hintOpacity)
+      this.setRegionHintNumber(region, 'weight', REGION_HINT_DEFAULTS.weight)
+      this.setRegionHintNumber(region, 'opacity', REGION_HINT_DEFAULTS.opacity)
       this.setRegionHintColor(region, '')
     }
   }

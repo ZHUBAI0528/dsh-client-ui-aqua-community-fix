@@ -89,8 +89,8 @@ export interface CollapsibleProps {
   title: string
   /** Whether the body is visible. */
   open: boolean
-  /** Toggle handler. */
-  onToggle: () => void
+  /** Toggle handler; omitted by groups whose header is hidden (tab-switched). */
+  onToggle?: () => void
   /** Short right-aligned summary shown while collapsed. */
   summary?: string
   /** When false the whole group renders nothing (used by the tab switcher). */
@@ -110,7 +110,7 @@ export function Collapsible({ title, open, onToggle, summary, visible = true, hi
           type="button"
           className={css.groupHead}
           aria-expanded={open}
-          onClick={onToggle}
+          onClick={() => { onToggle?.() }}
         >
           <span className={css.groupChevron} data-open={open}>▾</span>
           <span className={css.groupTitle}>{title}</span>

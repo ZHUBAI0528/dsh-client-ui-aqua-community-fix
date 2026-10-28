@@ -79,8 +79,6 @@ export interface AquaRowState {
   weightHeadingChat: number
   weightBodyComposer: number
   weightHeadingComposer: number
-  weightBodyStats: number
-  weightHeadingStats: number
   /** Explanatory-text weight (300-800). */
   hintWeight: number
   /** Explanatory-text strength (40-100). */
@@ -99,18 +97,10 @@ export interface AquaRowState {
   hintOpacityChat: number
   hintWeightComposer: number
   hintOpacityComposer: number
-  hintWeightStats: number
-  hintOpacityStats: number
   hintColorSidebar: string
   hintColorHeader: string
   hintColorChat: string
   hintColorComposer: string
-  hintColorStats: string
-  weightBodyRightbar: number
-  weightHeadingRightbar: number
-  hintWeightRightbar: number
-  hintOpacityRightbar: number
-  hintColorRightbar: string
   /** Conversation-only colour scheme (empty = follow the global font colour). */
   paletteChat: string
 
@@ -161,8 +151,6 @@ export interface AquaSettingsPayload {
   weightHeadingChat: number
   weightBodyComposer: number
   weightHeadingComposer: number
-  weightBodyStats: number
-  weightHeadingStats: number
   /** Explanatory-text weight (300-800). */
   hintWeight: number
   /** Explanatory-text strength (40-100). */
@@ -180,18 +168,10 @@ export interface AquaSettingsPayload {
   hintOpacityChat: number
   hintWeightComposer: number
   hintOpacityComposer: number
-  hintWeightStats: number
-  hintOpacityStats: number
   hintColorSidebar: string
   hintColorHeader: string
   hintColorChat: string
   hintColorComposer: string
-  hintColorStats: string
-  weightBodyRightbar: number
-  weightHeadingRightbar: number
-  hintWeightRightbar: number
-  hintOpacityRightbar: number
-  hintColorRightbar: string
   /** Conversation-only colour scheme (empty = follow the global font colour). */
   paletteChat: string
 }
@@ -247,8 +227,6 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       weightHeadingChat: 0,
       weightBodyComposer: 0,
       weightHeadingComposer: 0,
-      weightBodyStats: 0,
-      weightHeadingStats: 0,
       hintWeight: 400,
       hintOpacity: 80,
       hintFont: '',
@@ -263,18 +241,10 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       hintOpacityChat: 92,
       hintWeightComposer: 400,
       hintOpacityComposer: 92,
-      hintWeightStats: 400,
-      hintOpacityStats: 92,
       hintColorSidebar: '',
       hintColorHeader: '',
       hintColorChat: '',
       hintColorComposer: '',
-      hintColorStats: '',
-      weightBodyRightbar: 0,
-      weightHeadingRightbar: 0,
-      hintWeightRightbar: 400,
-      hintOpacityRightbar: 92,
-      hintColorRightbar: '',
       paletteChat: '',
       revision: -1,
     }),
@@ -320,8 +290,6 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
         d.weightHeadingChat = next.weightHeadingChat
         d.weightBodyComposer = next.weightBodyComposer
         d.weightHeadingComposer = next.weightHeadingComposer
-        d.weightBodyStats = next.weightBodyStats
-        d.weightHeadingStats = next.weightHeadingStats
         d.hintWeight = next.hintWeight
         d.hintOpacity = next.hintOpacity
         d.hintFont = next.hintFont
@@ -336,18 +304,10 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
         d.hintOpacityChat = next.hintOpacityChat
         d.hintWeightComposer = next.hintWeightComposer
         d.hintOpacityComposer = next.hintOpacityComposer
-        d.hintWeightStats = next.hintWeightStats
-        d.hintOpacityStats = next.hintOpacityStats
         d.hintColorSidebar = next.hintColorSidebar
         d.hintColorHeader = next.hintColorHeader
         d.hintColorChat = next.hintColorChat
         d.hintColorComposer = next.hintColorComposer
-        d.hintColorStats = next.hintColorStats
-        d.weightBodyRightbar = next.weightBodyRightbar
-        d.weightHeadingRightbar = next.weightHeadingRightbar
-        d.hintWeightRightbar = next.hintWeightRightbar
-        d.hintOpacityRightbar = next.hintOpacityRightbar
-        d.hintColorRightbar = next.hintColorRightbar
         d.paletteChat = next.paletteChat
         d.revision = revision
       },
