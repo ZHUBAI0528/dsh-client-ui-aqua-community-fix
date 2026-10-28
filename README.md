@@ -29,7 +29,7 @@ Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin commun
 | Base of this fork | upstream **v1.3.0** sources |
 | Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
-| Version | **2.0.0** |
+| Version | **2.0.3** |
 | **DSH support** | **V0.2.1-rc.3** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
@@ -45,7 +45,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ## Differences from upstream v1.3.0
 
-| Item | Upstream v1.3.0 | This package v2.0.0 |
+| Item | Upstream v1.3.0 | This package v2.0.3 |
 |---|---|---|
 | Layout modes | **Mica + Compatibility**, switchable | **Mica only** — compatibility mode and its selector are removed (tokens and styles too) |
 | Edge blur bands | 5px gradient blur bands at the top/bottom (an upstream feature) | **Removed** — they read as an extra gradient wash over the page edges; readability is carried by the column veil instead (the 13px edge fade stays) |
@@ -65,6 +65,8 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 - **Mica layout**: floating glass header, composer, stats line and trajectory view, with adjustable blur and frost
 - **Theme control panel**: one page collects every knob — colours, wallpaper, opacity, blur and decor
 - **No 3D tilt on the composer**: the 3D effect is gone — it interfered with text rendering
+- **Swappable faces**: body, code and explanatory copy each get their own picker with system / open-source / free-for-commercial presets, plus local `.ttf`, `.otf`, `.woff` and `.woff2` imports (≤ 24 MB each, kept in IndexedDB so they survive reinstalls)
+- **Sizes and weights**: three sizes (body / code / terminal), body and heading weights, and the explanatory face / weight / strength, each adjustable on its own; weight sliders label every discrete stop
 - **Free backdrop**: the living fluid board (hue and depth adjustable) or your own wallpaper — images and video both supported; wallpapers have their own blur and frost, video adds a brightness knob
 - **Desktop scheme following**: tracks the desktop app's light/dark switch and re-tunes the palette, glow and brightness direction on its own
 - **Background brightness**: follows the resolved scheme — dark 0–50 darkens, light 50–100 brightens, 50 is unchanged
@@ -107,7 +109,7 @@ Options:
 | Flag | Meaning |
 |---|---|
 | `-Profile desktop` | target profile (default `web`) |
-| `-Version v2.0.1` | pin a version (default: npm's `latest`; the script reads the dist-tag and pins it, because pnpm's `minimumReleaseAge` otherwise resolves to an older release) |
+| `-Version v2.0.3` | pin a version (default: npm's `latest`; the script reads the dist-tag and pins it, because pnpm's `minimumReleaseAge` otherwise resolves to an older release) |
 | `-DshHome <path>` | DSH home (default `%USERPROFILE%\.dsh`) |
 | `-Link` | **development only**, see below |
 
@@ -158,9 +160,20 @@ then append to `$DSH_HOME/profiles/web/cordis.patch.yml`:
 
 ## Usage
 
-Reload the UI. Aqua is **on by default**; the master switch sits at the top of the **Glass theme** page in the left sidebar (it is its own page, not a tab inside Plugins/Settings). Panel groups, top to bottom:
+Reload the UI. Aqua is **on by default**; the master switch sits at the top of the **Glass theme** page in the left sidebar (it is its own page, not a tab inside Plugins/Settings).
 
-`Glass material` (glass blur, frost) → `Backdrop` (fluid/wallpaper, hue, colour depth, background brightness, chat surface opacity, submenu opacity) → `Ambient` (particle whale, fish, interactive mesh) → `Submenu interaction` (click keeps it open) → `Hover effects` (cursor glow)
+The panel is a tab strip, one page per tab:
+
+| Tab | Contents |
+|---|---|
+| `Glass material` | glass blur, frost, conversation blur, menu page blur |
+| `Backdrop` | fluid / wallpaper, hue, colour depth, background brightness, chat surface opacity, submenu opacity |
+| `Font & size` | face sources, the three sizes, body / heading weights, explanatory weight and strength |
+| `Font colours` | body palette, a separate palette for the conversation, global explanatory colour |
+| `Regions` | per-region weights and explanatory overrides for sidebar / header / conversation / composer, line height, per-region reset |
+| `Decorations` | particle whale, fish, interactive mesh, cursor glow, click keeps submenus open |
+
+The choice is remembered: leaving the page and coming back — or restarting DSH — lands on the tab you were last on (stored under `dsh.ui-aqua.panelTab`); pick `Backdrop` to go back to the default.
 
 > The upstream **Mode** group (Mica / Compatibility) was removed entirely in 2.0.0.
 
@@ -186,6 +199,8 @@ The two wallpaper types expose different knobs: images get **Wallpaper blur** an
 | Video blur | video | 0–40 px | 0.5 px | 6 px |
 | Video brightness | video | 0–100% | 1% | 45% |
 | Glass blur | all | 0–40 px | 0.5 px | 20 px |
+| Conversation blur | all | 0–40 px | 0.5 px | 14 px |
+| Menu page blur | all | 0–40 px | 0.5 px | 14 px |
 | Frost | all | 0–100% | 1% | 7% |
 | Background brightness | all | dark 0–50 / light 50–100 | 1% | 50 |
 | Chat surface opacity | all | 0–100% | 1% | 25% |
@@ -200,6 +215,33 @@ The two wallpaper types expose different knobs: images get **Wallpaper blur** an
 1. **Video is dimmed automatically.** To keep foreground text readable, video wallpapers carry a dimming layer that cannot be turned off; use **Video brightness** and **Video blur** to adjust on top of it.
 2. **A video may not auto-play after a reload.** Browsers limit replay of local files; clicking **Choose video** once restores it, with no need to pick the file again.
 3. **Match the wallpaper to the scheme.** Light wallpapers suit light mode and dark wallpapers suit dark mode, otherwise text contrast drops — the panel says so inline.
+
+## Fonts and typography
+
+The **Font & size** tab covers three things: where the faces come from, how big they are, and how heavy they are. **Font colours** and **Regions** are separate tabs — the first sets body colour and the explanatory-text colour source, the second fine-tunes each region.
+
+**Where faces come from** — body, code and explanatory copy each have their own picker, defaulting to `Theme default`. The built-ins fall into three groups: system faces (Microsoft YaHei, DengXian, SimHei, SimSun, KaiTi, Consolas, Cascadia Code), open source (Source Han Sans / Serif, LXGW WenKai, Sarasa Mono, JetBrains Mono) and free for commercial use (MiSans, HarmonyOS Sans). A preset is only a `font-family` candidate list — **it takes effect only if the face is installed**, otherwise the next fallback applies.
+
+**Importing your own** — pick a local `.ttf`, `.otf`, `.woff` or `.woff2` up to **24 MB** (anything larger is rejected with a message instead of failing silently). `.ttc` collections are refused because `@font-face` cannot address a single weight inside one. Files live in the browser's IndexedDB, so they survive restarts, and each import is actually loaded once to verify it — a broken file says so rather than claiming success. A working import shows up in all three pickers and is selected for body text.
+
+The × on each row removes a face after a confirmation; if it was in use, the related settings fall back to `Theme default` instead of pointing at a face that no longer exists. Re-importing the same family reuses the existing record, so the list never grows duplicate rows that cannot be selected.
+
+**The weight sliders are stepped** — between 300 and 800 there are only six stops (step 100), and every stop is labelled under the track.
+
+| Setting | Range | Step | Default |
+|---|---|---|---|
+| Body size | 10–22 px | 1 px | 14 px |
+| Code size | 10–16 px | 1 px | 11 px |
+| Terminal size | 10–20 px | 1 px | 13 px |
+| Body weight | 300–800 | 100 (6 stops, labelled) | 400 |
+| Heading weight | 400–800 | 100 (5 stops, labelled) | 600 |
+| Explanatory weight | 300–800 | 100 (6 stops, labelled) | 400 |
+| Explanatory strength | 40–100% | 5% | 80% global / 92% per region |
+| Line height | 1–2.5 | 0.05 | 1.5 |
+
+Explanatory strength steps in 5% but reads as one continuous fade, so it carries no scale; only weight, where a single step is visibly different, does.
+
+Two layers of state: sizes belong to the host theme service (the same value as Settings → Appearance, kept in sync both ways), while faces and weights are stored by this plugin.
 
 ## Upgrading from upstream 1.x
 

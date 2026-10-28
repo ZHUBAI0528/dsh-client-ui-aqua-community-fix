@@ -1,7 +1,7 @@
 {
   "name": "@zhubai0528/dsh-client-ui-aqua-community-fix",
   "description": "Aqua glass theme for DeepSeek Harness V0.2.1-rc.2 — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publishConfig": {
     "access": "public"
   },
