@@ -1,113 +1,83 @@
-## Aqua 玻璃主题 v2.0.3 — 字体功能与设置页的审查修复
+## Aqua v2.0.3 — 现在能改字了
 
-本版是一次系统性代码审查后的修复版本，**没有新功能**（除交互细节）。审查对象是字体功能与重写的【玻璃主题】设置页，共修掉 4 项严重、12 项中等与十余项低危问题。行为兼容，仅一处本地存储键拆分为二并自动迁移。
+2.0.2 是个适配版（对齐 DSH 0.2.1-rc.3，界面没动）。这一版不一样：**字体、字号、字重、配色都可以自己调**，面板也从四组按钮换成六个标签页。可调项从 17 项增加到 40 多项。
 
-### 字体存储
+### 新增
 
-| 问题 | 修复 |
-|---|---|
-| 一条不足 4 字节的坏记录会让 `fontFormat()` 抛 `RangeError`，中断整批 `@font-face` 注入；调用侧又吞掉 reject —— 字体列表清空且没有删除入口，只能清 IndexedDB 自救 | 逐条校验、跳过并清理坏记录，单条损坏不再拖垮整批 |
-| 导入不校验体积与格式 | 24 MB 上限 + sfnt/woff 魔数白名单；`.ttc` 明确拒绝（`@font-face` 无法寻址集合内单个字重） |
-| family 名取自字体文件却直接拼进 CSS，构造 `"` 与 `}` 即可注入任意 CSS | 统一清洗后再进样式表 |
-| name 表只认 `language 0x409`，中文系统字体名回落成文件名 | en-US 优先、本地化名字兜底，补 Mac Roman 分支 |
-| 删除字体后设置仍指向已删 family，面板显示「跟随主题」而实际未生效 | 删前确认、删后清引用 |
-| 同名 family 重复导入产生永远选不中的死行 | 复用已有记录，加载时归并历史重复项 |
-| blob URL 只增不减（注释写着 revoke，代码没写） | 显式回收，注入时清理失效 URL |
-| 导入后不校验就弹「导入成功」 | `document.fonts.load()` 实测，失败如实提示 |
+- **字体能换了** —— 正文、代码、说明文字各有一个字体下拉，内置系统字体（微软雅黑、宋体、楷体、Consolas…）、开源（思源黑体/宋体、霞鹜文楷、JetBrains Mono）、免费商用（MiSans、鸿蒙 Sans）三类预设；也能导入自己的字体，支持 `.ttf` / `.otf` / `.woff` / `.woff2`，单个最大 24 MB，存在本地，重启不丢。
+- **字号与字重** —— 正文 10–22 px、代码 10–16 px、终端 10–20 px；正文与标题字重 300–800（6 档，滑块下方标出刻度）。说明文字可以单独定字体、字重和浓度（40–100%）。
+- **行间距** 1–2.5 可调。
+- **配色方案** —— 正文、会话区、说明文字各有一套独立配色，「字体颜色」标签页里切换。
+- **按区域微调** —— 左侧边栏 / 顶部栏 / 会话区 / 底部输入框四个区域，字重与说明文字分别调，可单独重置。
+- **面板改版** —— 六个标签页：玻璃材质 / 背景 / 字体字号 / 字体颜色 / 区域 / 装饰。打开时停在上次那一页，不用每次重新找。
+- **两处新的模糊** —— 会话详情模糊度、菜单页模糊度（0–40 px），可以只模糊对话区而不影响其它页面。
+- **面板内直接切外观** —— 浅色 / 深色 / 跟随系统，与「设置 → 外观」是同一个开关，两边改都同步。
 
-### 设置页
+### 改进
 
-- **背景亮度拆成两个字段** —— 此前是单字段 + 随外观切换的旋钮范围，切外观会静默丢弃另一半的值：亮色下设 80、切到暗色后旋钮显示被夹到 50，真实值仍是 80，一拖动就把亮色的设置覆盖掉。现拆为 `bgBrightnessLight` / `bgBrightnessDark`，旧键按 `>50` / `<50` 一次性迁移后删除。
-- **数字输入框可用** —— 改为本地草稿 + 失焦/回车提交。此前每次按键都写进受控值并立刻夹取，想输 18 敲 1 就被夹成 10。影响面板上全部 30 余个旋钮。
-- **字体下拉不再被裁** —— 改 fixed 定位 + 空间不足向上翻转；语义改为 `menu` + `menuitemradio`（`listbox` 的直接子元素是 `div`，本就不合 ARIA 结构）。
-- **字重滑块标出刻度** —— 300–800 只有 6 个档位，此前界面上看不出来，容易被当成滑动卡顿。
-- **记住上次的标签页** —— 写入 `dsh.ui-aqua.panelTab`，切页回来或重启都停在原分组；未知 id 回落「背景」。
-- **「重置本区」按钮** —— `resetRegion` 早已实现却没有入口；同时修正它拿全局 `hintOpacity`(80) 当区域默认值的错（区域出厂值是 92）。
-- **清理死状态** —— `stats` / `rightbar` 两组的 10 个字段（`REGIONS` 只有四个区域，全链路存在但从不生效）、5 个失效的折叠 `open` 状态、4 个永不渲染的摘要。
+- **拖滑块更跟手** —— 样式写入改成每帧最多一次（原来每移动一像素就全量重算 40 个 CSS 变量）。
+- **长会话不再卡** —— 说明文字的标记逻辑改成只处理新增节点（原来每次界面变化都全页扫描逐元素取样式）。
+- **透明 PNG 壁纸不再变黑底** —— 改存 WebP 保留透明通道，浏览器不支持时铺白底。
+- **字体下拉不再被裁** —— 靠近面板底部时自动向上翻，不会被滚动区域切掉。
 
-### 性能
+### 修复
 
-- **说明文字标记改为增量** —— 此前每次 DOM 变化都对每个区域 `querySelectorAll('*')` 并逐元素 `getComputedStyle()`，流式输出时等于持续数万次强制样式解析。现在首发全量、之后只处理新增节点，区域基准色按 region 缓存。
-- **旋钮写入按帧合并** —— `applySettings`（约 40 个 CSS 变量 + 两次 token 合成）改用 `requestAnimationFrame`，store 镜像仍同步更新，滑块跟手。
-- **字号写入去重** —— `setFontSizeRole` 不再每像素调一次宿主。
+- 一条损坏的字体记录曾会让**整个字体列表消失**，而且没有删除入口，只能清浏览器数据自救 —— 现在只跳过坏的那条。
+- 切换深浅色后「背景亮度」会被悄悄覆盖（亮色设了 80，切到暗色一拖动就没了）—— 现在两种外观各存一份。
+- 数字输入框**想输 18 却变成 10** —— 现在正常输入，失焦或回车才生效，面板上 30 多个旋钮都受益。
+- 删除字体后设置仍指向它，界面显示「跟随主题」但实际没生效 —— 删除时一并回退。
+- 视频壁纸存不下时静默失败 —— 现在明确提示。
+- 说明文字浓度重置会跳到一个从未使用过的值 —— 现在回到出厂值。
 
-### 壁纸
-
-- 透明 PNG 不再变黑底：优先编码 WebP（保留 alpha），浏览器不支持时铺白底再转 JPEG；无固有尺寸的 SVG 不再产出 1×1；输入限 32 MB 并给出失败提示。
-- 视频存不进 IndexedDB 时不再把它交给图片解码器（必然静默失败），改为如实提示。
-
-### 产物
-
-`lib/client.js` **394042 字节**，摘要 `d4eb5f16…`，纯 LF；连续两次构建摘要一致。
-
-### 安装与升级
-
-已发布到 npm（`@zhubai0528/dsh-client-ui-aqua-community-fix@2.0.3`，公开访问）：
+### 从 2.0.2 升级
 
 ```sh
 dsh plugin --profile desktop add @zhubai0528/dsh-client-ui-aqua-community-fix@2.0.3
 ```
 
-桌面版也可走界面：左侧栏 **插件** → **添加插件** → 在「包名或地址」里填 `@zhubai0528/dsh-client-ui-aqua-community-fix`。
+设置会沿用，只有「背景亮度」拆成了深色/浅色两份，旧值自动迁移，不用重设。
 
-Windows 还可用一键脚本（默认从 npm 安装，会先清理遗留 junction）：
-
-```powershell
-powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest 'https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix/raw/main/install.ps1' -OutFile install.ps1; .\install.ps1"
-```
-
-完整说明见 [README.zh.md](README.zh.md) / [README.md](README.md)，逐项改动见 [CHANGELOG.md](CHANGELOG.md)。
+产物 `lib/client.js` 394042 字节，摘要 `d4eb5f16…`。逐项技术清单见 [CHANGELOG.md](CHANGELOG.md)，完整功能说明见 [README.zh.md](README.zh.md)。
 
 ---
 
-## Aqua glass theme v2.0.3 — review fixes for the typography work and the settings page
+## Aqua v2.0.3 — you can finally change the type
 
-A review-driven release with **no new features** (bar interaction details). The audit covered the font feature and the rewritten Glass theme panel: 4 severe, 12 medium and a dozen low-severity issues. Behaviour-compatible, except one local storage key that is now split in two and migrated automatically.
+2.0.2 was a compatibility release (aligned to DSH 0.2.1-rc.3, no UI changes). This one is different: **fonts, sizes, weights and colours are yours to set**, and the panel went from four button groups to six tabs. The number of adjustable settings went from 17 to over 40.
 
-### Font storage
+### New
 
-| Problem | Fix |
-|---|---|
-| A record shorter than 4 bytes made `fontFormat()` throw `RangeError`, aborting the whole `@font-face` injection; the caller swallowed the rejection — the list went empty with no delete affordance, recoverable only by clearing IndexedDB | Each record is validated on its own; a broken one is skipped and pruned instead of taking the batch down |
-| Imports were not checked for size or format | 24 MB cap plus an sfnt/woff magic-number allowlist; `.ttc` is refused outright (`@font-face` cannot address one weight inside a collection) |
-| The family name came from the font file and was interpolated into CSS, so `"` and `}` injected arbitrary rules | Sanitised before it reaches the stylesheet |
-| The name table only honoured `language 0x409`, so Chinese system faces fell back to their filename | en-US first, localised names as fallback, Mac Roman branch added |
-| Deleting a face left settings pointing at it — the panel showed "Theme default" while the dead family was still set | Confirmed before delete, references cleared after |
-| Re-importing the same family produced a row that could never be selected | The existing record is reused; historical duplicates are merged on load |
-| Blob URLs were never revoked (the comment claimed they were) | Revoked explicitly, stale URLs collected on each injection |
-| The panel announced "imported" without verifying anything | `document.fonts.load()` actually runs, and failures are reported |
+- **Swappable faces** — body, code and explanatory copy each get their own picker, with built-in presets (Microsoft YaHei, SimSun, KaiTi, Consolas, Source Han Sans/Serif, LXGW WenKai, JetBrains Mono, MiSans, HarmonyOS Sans) and local imports: `.ttf`, `.otf`, `.woff` or `.woff2`, up to 24 MB each, stored locally so they survive restarts.
+- **Sizes and weights** — body 10–22 px, code 10–16 px, terminal 10–20 px; body and heading weights 300–800 in six labelled stops. Explanatory text gets its own face, weight and strength (40–100%).
+- **Line height** from 1 to 2.5.
+- **Colour palettes** — separate schemes for body copy, the conversation and explanatory text.
+- **Per-region control** — sidebar, header, conversation and composer can each carry their own weight and explanatory styling, with a one-click reset per region.
+- **New panel** — six tabs (Glass material / Backdrop / Font & size / Font colours / Regions / Decorations) that reopen on the tab you left.
+- **Two new blur knobs** — conversation blur and menu-page blur (0–40 px), so you can blur the transcript without touching anything else.
+- **Appearance switch inside the panel** — light / dark / follow system, the same setting as Settings → Appearance, kept in sync both ways.
 
-### Settings page
+### Improvements
 
-- **Background brightness split in two** — one field plus a knob range that followed the scheme meant flipping the appearance silently discarded the other half: set 80 in light mode, switch to dark and the knob clamps to 50 while the real value stays 80, so the first drag overwrites the light setting. Now `bgBrightnessLight` / `bgBrightnessDark`, with the old key migrated by `>50` / `<50` and then removed.
-- **Number boxes usable** — a local draft commits on blur/Enter. Previously every keystroke was written to the controlled value and clamped, so typing 18 turned the "1" into 10. This affected all 30-odd knobs.
-- **Font dropdown no longer clipped** — fixed positioning that flips upward near the bottom edge; semantics moved to `menu` + `menuitemradio` (a `listbox` whose direct children are `div`s was invalid anyway).
-- **Weight sliders label their stops** — 300–800 has only six stops; without labels the stepping read as stutter.
-- **Last tab remembered** — stored under `dsh.ui-aqua.panelTab`; returning or restarting lands on the same group, unknown ids fall back to Backdrop.
-- **Per-region reset button** — `resetRegion` existed with no way to reach it; it also reset to the global `hintOpacity`(80) instead of the region's shipped 92.
-- **Dead state removed** — the ten `stats` / `rightbar` fields (`REGIONS` has four entries, so nothing ever consumed them), five unreachable fold flags, four summaries that were never rendered.
+- **Sliders track the pointer** — style writes are coalesced to at most one per frame (previously every pixel recomputed ~40 CSS variables).
+- **Long conversations stay smooth** — explanatory-text marking now only looks at newly added nodes instead of rescanning the page on every change.
+- **Transparent PNG wallpapers no longer go black** — stored as WebP with the alpha channel intact, falling back to a white flatten.
+- **The font dropdown is no longer clipped** — it flips upward near the bottom edge instead of being cut off by the scroll area.
 
-### Performance
+### Fixes
 
-- **Hint marking is incremental** — it used to run `querySelectorAll('*')` over every region and call `getComputedStyle()` per element on each DOM change, i.e. tens of thousands of forced style resolutions while a response streams. Now one full pass, then only the newly added nodes, with per-region target colours cached.
-- **Knob writes coalesced per frame** — `applySettings` (~40 CSS variables plus two token composites) runs at most once per frame; the store mirror still updates synchronously so the slider tracks the pointer.
-- **Font-size writes deduped** — `setFontSizeRole` no longer calls the host per pixel.
+- One corrupt font record used to make the **entire font list disappear**, with no delete entry left — recoverable only by clearing browser data. Now only the broken record is skipped.
+- Flipping between light and dark silently overwrote **background brightness** — each appearance now keeps its own value.
+- Number boxes turned a typed **18 into 10** — they now accept input normally and commit on blur or Enter, across all 30-odd knobs.
+- Deleting a font left settings pointing at it, so the panel said "Theme default" while the dead face was still set — references are now cleared.
+- A video wallpaper that could not be stored failed silently — it now says so.
+- Resetting explanatory strength jumped to a value that was never a default — it now returns to the shipped one.
 
-### Wallpaper
-
-- Transparent PNGs no longer turn black: WebP is preferred (alpha preserved), with a white flatten before JPEG when the browser cannot encode it; SVGs without intrinsic size no longer produce a 1×1; input is capped at 32 MB with a real error message.
-- When a video cannot be stored in IndexedDB it is no longer handed to an image decoder (a guaranteed silent failure) — the failure is reported instead.
-
-### Artifact
-
-`lib/client.js` is **394042 bytes**, digest `d4eb5f16…`, pure LF; two consecutive builds produce the same digest.
-
-### Install / upgrade
-
-Published to npm as `@zhubai0528/dsh-client-ui-aqua-community-fix@2.0.3`:
+### Upgrading from 2.0.2
 
 ```sh
 dsh plugin --profile desktop add @zhubai0528/dsh-client-ui-aqua-community-fix@2.0.3
 ```
 
-Full details in [README.md](README.md) / [README.zh.md](README.zh.md), per-change notes in [CHANGELOG.md](CHANGELOG.md).
+Your settings carry over; only background brightness was split into a dark and a light value, and the old one migrates automatically.
+
+Artifact: `lib/client.js`, 394042 bytes, digest `d4eb5f16…`. Per-change notes in [CHANGELOG.md](CHANGELOG.md), full documentation in [README.md](README.md).
