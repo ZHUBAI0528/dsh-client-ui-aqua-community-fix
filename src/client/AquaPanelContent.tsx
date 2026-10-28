@@ -22,6 +22,15 @@ import type { AquaRowState } from './settings-store.ts'
 import { isChineseLocale, type AquaLocaleKey } from './locales.ts'
 import css from './AquaAppearanceRow.module.css'
 
+/** Font-weight stops: these sliders move in 100s, there is nothing in between. */
+const WEIGHT_TICKS = [300, 400, 500, 600, 700, 800] as const
+/**
+ * Hint strength moves in 5% steps (13 stops). Labelling all of them would
+ * overlap on a ~250px track, so every other stop carries the number — the
+ * slider still lands on the unlabelled ones.
+ */
+const OPACITY_TICKS = [40, 50, 60, 70, 80, 90, 100] as const
+
 /** Detect if running in Electron renderer. */
 function isElectron(): boolean {
   try {
@@ -213,10 +222,30 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   /* Card-style tab switcher: exactly one group page is mounted at a time.
      Defaults to the background group, which is the one the user tunes most. */
   const [tab, setTab] = useState('background')
+  const rootRef = useRef<HTMLDivElement | null>(null)
   /* Fold flags for the nested region cards. The top-level groups are not
      collapsible: the tab bar already shows exactly one of them, so their
      headers are hidden and an `open` flag there could never be read. */
   const [openRegionMap, setOpenRegionMap] = useState<Record<string, boolean>>({})
+
+  // The sidebar keeps this page mounted while another page is shown, so the
+  // `useState` default never re-runs — coming back used to land on whatever tab
+  // was left open. Re-entering the viewport IS "opening the page again" from
+  // inside the component; when the host unmounts instead, the default applies
+  // anyway. (Window minimising also toggles intersection, which is why the
+  // reset only fires on the hidden → shown edge.)
+  useEffect(() => {
+    const element = rootRef.current
+    if (element === null || typeof IntersectionObserver === 'undefined') return
+    let shown = true
+    const observer = new IntersectionObserver((entries) => {
+      const next = entries.some(entry => entry.isIntersecting)
+      if (next && !shown) setTab('background')
+      shown = next
+    })
+    observer.observe(element)
+    return () => { observer.disconnect() }
+  }, [])
 
   // Videos are `idb:` blobs, `fsa:` remembered-file handles, or legacy
   // `data:video/` URLs.
@@ -422,7 +451,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   ]
 
   return (
-    <div className={css.group}>
+    <div className={css.group} ref={rootRef}>
       {/* 外观：与「设置 → 外观」同一个开关，不折叠 */}
       <section className={`${css.subGroup} ${css.spanAll}`}>
         <div className={css.subTitle}>{t('aqua.appearance')}</div>
@@ -640,13 +669,13 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         <div className={css.miniTitle}>{t('aqua.weightBody')} / {t('aqua.weightHeading')}</div>
 
         <div className={css.fieldRow}>
-          <Knob label={t('aqua.weightBody')} value={weightBody} min={300} max={800} step={100} unit="" onChange={setWeightBody} />
+          <Knob label={t('aqua.weightBody')} value={weightBody} min={300} max={800} step={100} unit="" ticks={WEIGHT_TICKS} onChange={setWeightBody} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetWeights} />
           <PreviewBubble text={t('aqua.previewBodyWeight')} style={{ fontWeight: weightBody }} />
         </div>
 
         <div className={css.fieldRow}>
-          <Knob label={t('aqua.weightHeading')} value={weightHeading} min={400} max={800} step={100} unit="" onChange={setWeightHeading} />
+          <Knob label={t('aqua.weightHeading')} value={weightHeading} min={400} max={800} step={100} unit="" ticks={WEIGHT_TICKS} onChange={setWeightHeading} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetWeights} />
           <PreviewBubble
             text={t('aqua.previewHeadingWeight')}
@@ -673,11 +702,11 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
           />
         </div>
         <div className={css.fieldRow}>
-          <Knob label={t('aqua.hintWeight')} value={hintWeight} min={300} max={800} step={100} unit="" onChange={setHintWeight} />
+          <Knob label={t('aqua.hintWeight')} value={hintWeight} min={300} max={800} step={100} unit="" ticks={WEIGHT_TICKS} onChange={setHintWeight} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
         </div>
         <div className={css.fieldRow}>
-          <Knob label={t('aqua.hintOpacity')} value={hintOpacity} min={40} max={100} step={5} unit="%" onChange={setHintOpacity} />
+          <Knob label={t('aqua.hintOpacity')} value={hintOpacity} min={40} max={100} step={5} unit="%" ticks={OPACITY_TICKS} onChange={setHintOpacity} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
         </div>
         <div className={css.knobHint}>{t('aqua.hintGroupHint')}</div>
@@ -801,11 +830,11 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
               {/* 该区域的说明文字：字重 / 浓度 / 颜色 */}
               <div className={css.miniTitle}>{t('aqua.regionHintGroup')}</div>
               <div className={css.fieldRow}>
-                <Knob label={t('aqua.hintWeight')} value={region.hintW} min={300} max={800} step={100} unit="" onChange={(value) => { setRegionHintNumber(region.key, 'weight', value) }} />
+                <Knob label={t('aqua.hintWeight')} value={region.hintW} min={300} max={800} step={100} unit="" ticks={WEIGHT_TICKS} onChange={(value) => { setRegionHintNumber(region.key, 'weight', value) }} />
                 <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setRegionHintNumber(region.key, 'weight', 400) }} />
               </div>
               <div className={css.fieldRow}>
-                <Knob label={t('aqua.hintOpacity')} value={region.hintO} min={40} max={100} step={5} unit="%" onChange={(value) => { setRegionHintNumber(region.key, 'opacity', value) }} />
+                <Knob label={t('aqua.hintOpacity')} value={region.hintO} min={40} max={100} step={5} unit="%" ticks={OPACITY_TICKS} onChange={(value) => { setRegionHintNumber(region.key, 'opacity', value) }} />
                 <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setRegionHintNumber(region.key, 'opacity', 92) }} />
               </div>
               <div className={css.fieldRow}>

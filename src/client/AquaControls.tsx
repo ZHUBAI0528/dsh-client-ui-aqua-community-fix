@@ -17,10 +17,16 @@ export interface KnobProps {
   step: number
   unit: string
   onChange: (value: number) => void
+  /**
+   * Discrete stops worth labelling under the track. Only pass this for a knob
+   * whose value really moves in steps (font weight, hint strength) — it is what
+   * tells the user the slider is not continuous.
+   */
+  ticks?: readonly number[]
 }
 
 /** Render one knob row. */
-export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps) {
+export function Knob({ label, value, min, max, step, unit, onChange, ticks }: KnobProps) {
   const clamp = (n: number) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))
   // The number box keeps its own draft while it has focus. Writing every
   // keystroke straight through clamped "1" to the minimum before "18" could be
@@ -33,6 +39,12 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
   useEffect(() => {
     if (!editing) setDraft(String(value))
   }, [value, editing])
+
+  const visibleTicks = (ticks ?? []).filter(tick => tick >= min && tick <= max)
+  const tickPercent = (tick: number): number => {
+    const span = max - min
+    return span > 0 ? (tick - min) / span : 0
+  }
 
   const commit = (raw: string): void => {
     const parsed = Number(raw)
@@ -50,16 +62,33 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
     // slider takes the label, the number box names itself.
     <div className={css.knob}>
       <label className={css.knobLabel} htmlFor={uid}>{label}</label>
-      <input
-        id={uid}
-        type="range"
-        className={css.slider}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => { onChange(clamp(Number(e.target.value))) }}
-      />
+      <span className={css.sliderWrap}>
+        <input
+          id={uid}
+          type="range"
+          className={css.slider}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => { onChange(clamp(Number(e.target.value))) }}
+        />
+        {visibleTicks.length > 0 && (
+          // Decorative: the slider already announces min/max/step, these just
+          // make the discrete stops visible instead of implied.
+          <span className={css.sliderTicks} aria-hidden="true">
+            {visibleTicks.map(tick => (
+              <span
+                key={tick}
+                className={css.sliderTick}
+                style={{ left: `calc(8px + (100% - 16px) * ${tickPercent(tick)})` }}
+              >
+                {tick}
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
       <span className={css.numberWrap}>
         <input
           type="number"
