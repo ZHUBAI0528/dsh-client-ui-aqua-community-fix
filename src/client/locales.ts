@@ -124,6 +124,19 @@ export const zh = {
 } satisfies Record<string, string>
 
 
+/**
+ * Whether a locale id selects the Chinese dictionary.
+ *
+ * The panel used to infer the language from a translated string
+ * (`t('aqua.enable') === '开启'`), which breaks the moment the copy is reworded
+ * or a third language is added.
+ * @param id - active locale id from the host locale service.
+ * @returns true for zh, zh-CN, zh-TW, zh-Hant…
+ */
+export function isChineseLocale(id: string): boolean {
+  return id.toLowerCase().startsWith('zh')
+}
+
 export type AquaLocaleKey = keyof typeof zh
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

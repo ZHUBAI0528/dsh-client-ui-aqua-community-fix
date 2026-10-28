@@ -104,6 +104,9 @@ export interface AquaRowState {
   /** Conversation-only colour scheme (empty = follow the global font colour). */
   paletteChat: string
 
+  /** Active host locale id (drives the font names' language, not the copy). */
+  locale: string
+
   /** Monotonic revision; -1 until first sync so revision 0 lands as a change. */
   revision: number
 }
@@ -174,6 +177,8 @@ export interface AquaSettingsPayload {
   hintColorComposer: string
   /** Conversation-only colour scheme (empty = follow the global font colour). */
   paletteChat: string
+  /** Active host locale id. */
+  locale: string
 }
 
 /** Declared action shape giving the exported factory a stable return type. */
@@ -246,6 +251,7 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
       hintColorChat: '',
       hintColorComposer: '',
       paletteChat: '',
+      locale: '',
       revision: -1,
     }),
     actions: {
@@ -309,6 +315,7 @@ export function createAquaRowStore(): EngineStoreHandle<AquaRowState, AquaRowAct
         d.hintColorChat = next.hintColorChat
         d.hintColorComposer = next.hintColorComposer
         d.paletteChat = next.paletteChat
+        d.locale = next.locale
         d.revision = revision
       },
     },

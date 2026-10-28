@@ -19,7 +19,7 @@ import { CODE_FONT_PRESETS, HINT_COLORS, TEXT_FONT_PRESETS, TEXT_PALETTES, type 
 import { deleteImportedFont, ensureImportedFontFaces, FontImportError, releaseImportedFont, saveImportedFont, verifyImportedFont, type ImportedFont } from './font-store.ts'
 import { loadVideoHandle, saveVideoBlob, saveVideoHandle } from './wallpaper-store.ts'
 import type { AquaRowState } from './settings-store.ts'
-import type { AquaLocaleKey } from './locales.ts'
+import { isChineseLocale, type AquaLocaleKey } from './locales.ts'
 import css from './AquaAppearanceRow.module.css'
 
 /** Detect if running in Electron renderer. */
@@ -198,6 +198,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const hintOpacityComposer = useStore(s => s.hintOpacityComposer)
   const hintColorComposer = useStore(s => s.hintColorComposer)
   const paletteChat = useStore(s => s.paletteChat)
+  const locale = useStore(s => s.locale)
 
   /** Read a picked image; `fileToDataUrl` rejects on oversize / undecodable files. */
   const applyImage = (file: File): void => {
@@ -298,9 +299,9 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
 
   /* ---------- Typography helpers ---------- */
 
-  // The host reports its language as either zh / zh-CN or en; the panel copy
+  // The host reports its language id through the locale service; the panel copy
   // comes from the dictionary, so the font names follow the same switch.
-  const chinese = t('aqua.enable') === '开启'
+  const chinese = isChineseLocale(locale)
 
   // Booting the panel restores every imported @font-face and lists them.
   useEffect(() => {
@@ -764,7 +765,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
               key={region.key}
               title={region.label}
               open={open}
-              onToggle={() => { setOpenRegionMap({ ...openRegionMap, [region.key]: !open }) }}
+              onToggle={() => { setOpenRegionMap(prev => ({ ...prev, [region.key]: !open })) }}
               summary={label(region.body) + ' / ' + label(region.heading)}
             >
               <div className={css.fieldRow}>

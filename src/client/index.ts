@@ -112,6 +112,7 @@ export function apply(ctx: ClientContext): void {
       hintColorChat: s.hintColorChat,
       hintColorComposer: s.hintColorComposer,
       paletteChat: s.paletteChat,
+      locale: ctx.locale.getLocale().active,
     }
   }
   const sync = (): void => {
@@ -122,6 +123,8 @@ export function apply(ctx: ClientContext): void {
   // The Appearance switch flips the brightness knob's half-range; re-sync
   // the store so the panel re-renders with the new range.
   ctx.effect(() => ctx.on('theme/change', () => { sync() }), 'ui-aqua: appearance scheme sync')
+  // The panel picks font names by language; a switch must re-render it.
+  ctx.effect(() => ctx.on('locale/change', () => { sync() }), 'ui-aqua: locale sync')
 
   const panelInjected = (actions: AquaPanelActions): AquaPanelPageInjected => {
     panelBound = actions

@@ -4,7 +4,7 @@
  * list that can delete imported faces and restore defaults), the colour-scheme
  * cards, the hover preview bubble, and the wallpaper file reader.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import css from './AquaAppearanceRow.module.css'
 
@@ -27,6 +27,7 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
   // finished, and an empty box became 0 → min. The draft is committed on blur
   // or Enter, and re-synced whenever the real value changes from elsewhere
   // (slider, reset button, another window).
+  const uid = useId()
   const [draft, setDraft] = useState(String(value))
   const [editing, setEditing] = useState(false)
   useEffect(() => {
@@ -45,9 +46,12 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
   }
 
   return (
-    <label className={css.knob}>
-      <span className={css.knobLabel}>{label}</span>
+    // A <label> can only be associated with ONE control; this row has two. The
+    // slider takes the label, the number box names itself.
+    <div className={css.knob}>
+      <label className={css.knobLabel} htmlFor={uid}>{label}</label>
       <input
+        id={uid}
         type="range"
         className={css.slider}
         min={min}
@@ -60,6 +64,7 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
         <input
           type="number"
           className={css.number}
+          aria-label={label}
           min={min}
           max={max}
           step={step}
@@ -73,7 +78,7 @@ export function Knob({ label, value, min, max, step, unit, onChange }: KnobProps
         />
         <span className={css.unit}>{unit}</span>
       </span>
-    </label>
+    </div>
   )
 }
 

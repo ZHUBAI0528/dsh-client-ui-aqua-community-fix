@@ -825,8 +825,25 @@ export class AquaLayer {
    * fallback when the document carries no signal at all.
    */
   private resolveScheme(): boolean {
-    if (typeof document !== 'undefined' && document.body.hasAttribute('data-ds-dark-theme')) return true
-    if (typeof document !== 'undefined' && document.body.isConnected) return false
+    if (typeof document !== 'undefined') {
+      const body = document.body
+      if (body !== null && body.isConnected) {
+        if (body.hasAttribute('data-ds-dark-theme')) return true
+        // A host that marks the scheme with a class (or a differently named
+        // attribute) would otherwise read as light here, and the brightness
+        // overlay would paint a white veil over dark chrome.
+        if (body.classList.contains('dark') || body.classList.contains('dark-theme')) return true
+        // No explicit marker: trust the OS, but only while the host itself is
+        // in `system` mode — an explicit light choice must stay light.
+        if (this.readThemePreference() === 'system') {
+          const query = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(prefers-color-scheme: dark)')
+            : undefined
+          if (query?.matches === true) return true
+        }
+        return false
+      }
+    }
     try {
       return this.ctx.theme.getTheme().active.colorScheme === 'dark'
     } catch {

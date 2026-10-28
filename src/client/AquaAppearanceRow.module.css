@@ -647,11 +647,14 @@ body[data-ds-dark-theme] .fontFamilyPresets {
   font-size: 10px;
 }
 
-/* Popover list: grows downward, scrolls once the font list gets long. */
+/* Popover list: grows downward, scrolls once the font list gets long.
+   Placement is computed in JS (fixed, flips upward near the viewport bottom);
+   the absolute box below is only the pre-measurement fallback, so it must not
+   encode the label width — that used to be a hard-coded `left: 102px`. */
 .fontPickerList {
   position: absolute;
   top: calc(100% + 4px);
-  left: 102px;
+  left: 0;
   right: 0;
   z-index: 40;
   max-height: 260px;
