@@ -34,6 +34,41 @@
      the frost term lets the material knob thicken it from there. */
   --dsh-aqua-glass-menu-light: color-mix(in srgb, rgb(255 255 255) calc(var(--dsh-aqua-menu-opacity, 96) * 1%), transparent);
   --dsh-aqua-glass-menu-dark: color-mix(in srgb, rgb(38 43 54) calc(var(--dsh-aqua-menu-opacity, 96) * 1%), transparent);
+
+  /* ---------- Edge recipe: a 1px bright rim + refraction ----------
+     Every glass pane shares ONE edge recipe instead of a lone top highlight:
+
+       1. `inset 0 0 0 1px`   — the 1px rim light that runs the whole outline;
+       2. `inset 1px 1px 0`   — catch light on the lit (top-left) corner;
+       3. `inset -1px -1px 0` — shade on the opposite corner: together with the
+                                catch light this is the bevel that reads as
+                                glass THICKNESS;
+       4. the two soft spills — light bending just inside the top edge and the
+                                darker tint pooling along the bottom edge, i.e.
+                                the refraction fringe.
+
+     It is a single variable so all panes stay in lock step with the scheme and
+     a pane that also needs a drop shadow just prefixes its own shadow list. */
+  --dsh-aqua-edge: rgba(255, 255, 255, 0.62);
+  --dsh-aqua-rim:
+    inset 0 0 0 1px var(--dsh-aqua-edge),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.32),
+    inset -1px -1px 0 rgba(19, 45, 83, 0.10),
+    inset 0 2px 6px -3px rgba(255, 255, 255, 0.5),
+    inset 0 -2px 6px -3px rgba(19, 45, 83, 0.16);
+}
+
+/* Dark glass: the rim is dimmer (a bright white outline on navy reads as a
+   painted border, not as light) while the refraction fringe turns cool blue —
+   the deep-sea backdrop is what bends into the edge. */
+[data-dsh-aqua] body[data-ds-dark-theme] {
+  --dsh-aqua-edge: rgba(255, 255, 255, 0.24);
+  --dsh-aqua-rim:
+    inset 0 0 0 1px var(--dsh-aqua-edge),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+    inset -1px -1px 0 rgba(0, 8, 18, 0.38),
+    inset 0 2px 6px -3px rgba(150, 196, 255, 0.26),
+    inset 0 -2px 6px -3px rgba(0, 6, 14, 0.42);
 }
 
 [data-dsh-aqua] [data-dsh-frame] {
@@ -70,22 +105,55 @@
    the column painted its stock opaque fill and the 会话区不透明度 knob
    stopped doing anything. Matching the class removes that timing
    dependency; the attribute stays supported for stock UIs that ship it. ---------- */
-[data-dsh-aqua] [data-dsh-center],
-[data-dsh-aqua] [class*='centerCol'] {
-  /* `!important` is deliberate: this column is the one surface the theme owns
-     outright — it is what the 会话区不透明度 knob paints — but the host (and
-     skin plugins riding the same tokens) also write a background here, and on
-     a cold boot their write can win: an inline style, or a rule further down
-     the cascade. Measured on a real profile, the column computed to
-     rgb(244,248,253) (--dsw-alias-bg-base, light) instead of the veil while
-     the fluid backdrop and every gate attribute were healthy. Dark mode hid
-     the bug because its base is dark enough to pass for the veil. */
-  background: rgb(255 255 255 / var(--dsh-aqua-chat-white, 0)) !important;
+/* ---------- WHY THE SHEET IS A PSEUDO-ELEMENT, NOT THE COLUMN ----------
+   Two failures shared one cause — `backdrop-filter` sitting on the column:
+
+   1. A backdrop-filtered element becomes the CONTAINING BLOCK for every
+      `position: fixed` descendant (same rule as `transform` / `filter`).
+      dsh-armory's quick menu is `position: fixed` with viewport coordinates
+      measured from its trigger, so inside the column it was placed relative to
+      the COLUMN instead: the menu detached from the button and drifted up and
+      right by the sidebar's width. Measured in Chromium, a fixed child of a
+      filtered column lands at column.x + its own left.
+
+   2. The same filter makes the column a BACKDROP ROOT, so every child's own
+      backdrop-filter was filtering an already-blurred backdrop and had no
+      visible effect at all (measured: pixel delta 0.00). That is why
+      「玻璃模糊度」 only ever changed the sidebar — the header card, the
+      composer and the bubbles all live INSIDE this column.
+
+   A pseudo-element is a sibling of the content, not an ancestor, so painting
+   the sheet there fixes both. The column keeps its own stacking context
+   (`z-index: 0`, which is NOT a backdrop root — `isolation` would be, and
+   would bring failure 2 straight back) so the z-index:-1 sheet paints behind
+   the content instead of slipping behind the page background. */
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']) {
+  position: relative;
+  z-index: 0;
+  /* The veil moved to ::before; what stays here is the lift. The host (and
+     skin plugins riding the same tokens) paint an OPAQUE bg-base fill on this
+     column, which would hide the sheet, the fluid and the wallpaper. Measured
+     on a real profile it computed to rgb(244,248,253) while every gate
+     attribute was healthy; dark mode hid it because its base is dark enough to
+     pass for the veil. */
+  background: transparent !important;
 }
 
-[data-dsh-aqua] body[data-ds-dark-theme] [data-dsh-center],
-[data-dsh-aqua] body[data-ds-dark-theme] [class*='centerCol'] {
-  background: rgb(34 38 47 / var(--dsh-aqua-chat-black, 0)) !important;
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol'])::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: rgb(255 255 255 / var(--dsh-aqua-chat-white, 0));
+  /* Both route knobs land on this one surface (see the split below) and the
+     material knob scales it: nothing inside the column can add blur of its
+     own, so this is the only place 「玻璃模糊度」 can reach the chat. */
+  backdrop-filter: blur(calc(var(--dsh-aqua-blur-chat, 14px) * var(--dsh-aqua-glass-scale, 1))) saturate(1.04);
+}
+
+[data-dsh-aqua] body[data-ds-dark-theme] :is([data-dsh-center], [class*='centerCol'])::before {
+  background: rgb(34 38 47 / var(--dsh-aqua-chat-black, 0));
 }
 
 [data-dsh-aqua] [data-dsh-center] [class*='page'],
@@ -98,6 +166,34 @@
      would hide both the backdrop and the veil. */
   background: transparent !important;
 }
+/* ---------- Menu pages: the surface tokens, rewritten once ----------
+   插件 / 定时任务 / 市场 / 设置 are host pages built out of nested slabs that all
+   ask for `--dsw-alias-bg-base` or `--dsw-alias-bg-layer-*`: the page root, the
+   detail pane, the save footer, the notice strip. The roots are already cleared
+   by the `[class*='page']` rule above, but the INNER panes kept painting an
+   opaque base fill — that is the big flat block still visible on every detail
+   page, and re-listing host class hashes (which change every release) would go
+   stale after the next update.
+
+   So the four surface tokens are rewritten ON THE COLUMN instead: every
+   descendant that asks for a surface resolves to glass, including pages that do
+   not exist yet. Scoped to the menu-page state, so a conversation keeps its own
+   tokens untouched — and `--dsw-alias-bg-overlay` (the modal scrim) is
+   deliberately NOT touched, or the dialogs would lose their dimmer. */
+[data-dsh-aqua]:has([class*='sidebarCol'] [aria-current='page']) :is([data-dsh-center], [class*='centerCol']) {
+  --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: rgb(255 255 255 / 26%);
+  --dsw-alias-bg-layer-2: rgb(255 255 255 / 36%);
+  --dsw-alias-bg-layer-3: rgb(255 255 255 / 46%);
+}
+
+[data-dsh-aqua] body[data-ds-dark-theme]:has([class*='sidebarCol'] [aria-current='page']) :is([data-dsh-center], [class*='centerCol']) {
+  --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: rgb(31 37 47 / 44%);
+  --dsw-alias-bg-layer-2: rgb(31 37 47 / 56%);
+  --dsw-alias-bg-layer-3: rgb(31 37 47 / 68%);
+}
+
 /* The header card floats ABOVE the transcript: the scroll body slides up
    behind the frosted glass (negative margin) and its padding starts content
    below the card, so scrolling text passes under the header and stays
@@ -397,7 +493,7 @@
 [data-dsh-float] [data-dsh-surface] {
   background: color-mix(in srgb, rgb(255 255 255) calc(62% * var(--dsh-aqua-surface-frost, 1)), transparent);
   border: 1px solid rgba(19, 45, 83, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: var(--dsh-aqua-rim);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
 
@@ -408,7 +504,7 @@
 [data-dsh-float] body[data-ds-dark-theme] [data-dsh-surface] {
   background: color-mix(in srgb, rgb(42 46 56) calc(62% * var(--dsh-aqua-surface-frost, 1)), transparent);
   border-color: rgba(148, 180, 220, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--dsh-aqua-rim);
 }
 
 [data-dsh-float] body[data-ds-dark-theme] [data-dsh-surface]:hover:not(:disabled) {
@@ -438,7 +534,7 @@
 [data-dsh-float] [data-dsh-add] {
   background: color-mix(in srgb, rgb(255 255 255) calc(40% * var(--dsh-aqua-frost, 1)), transparent);
   border: 1px solid rgba(19, 45, 83, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: var(--dsh-aqua-rim);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
 
@@ -449,7 +545,7 @@
 [data-dsh-float] body[data-ds-dark-theme] [data-dsh-add] {
   background: color-mix(in srgb, rgb(42 46 56) calc(40% * var(--dsh-aqua-frost, 1)), transparent);
   border-color: rgba(148, 180, 220, 0.25);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--dsh-aqua-rim);
 }
 
 [data-dsh-float] body[data-ds-dark-theme] [data-dsh-add]:hover:not(:disabled) {
@@ -524,7 +620,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   background: var(--dsh-aqua-glass-card-light);
   border: 1px solid rgba(19, 45, 83, 0.26);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    var(--dsh-aqua-rim),
     0 10px 36px rgba(19, 45, 83, 0.16);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
@@ -533,7 +629,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   background: var(--dsh-aqua-glass-card-dark);
   border-color: rgba(148, 180, 220, 0.32);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--dsh-aqua-rim),
     0 10px 36px rgba(2, 6, 14, 0.5);
 }
 
@@ -561,11 +657,11 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
 [data-dsh-float] [data-dsh-inputbar]:has([data-slot='conversation.composer.dock']) [data-composer-card]::before {
   border-radius: 24px 24px 0 0;
   border-bottom-color: transparent;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: var(--dsh-aqua-rim);
 }
 
 [data-dsh-float] body[data-ds-dark-theme] [data-dsh-inputbar]:has([data-slot='conversation.composer.dock']) [data-composer-card]::before {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  box-shadow: var(--dsh-aqua-rim);
 }
 
 [data-dsh-float] [data-dsh-inputbar] [class*='dock']:has(> [data-slot='conversation.composer.dock']) {
@@ -591,7 +687,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-radius: 0 0 16px 16px;
   background: var(--dsh-aqua-glass-card-light);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    var(--dsh-aqua-rim),
     0 10px 36px rgba(19, 45, 83, 0.16);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
@@ -601,7 +697,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-top-color: rgba(148, 180, 220, 0.16);
   background: var(--dsh-aqua-glass-card-dark);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    var(--dsh-aqua-rim),
     0 10px 36px rgba(2, 6, 14, 0.5);
 }
 
@@ -717,7 +813,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-radius: 20px;
   background: var(--dsh-aqua-glass-card-light);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    var(--dsh-aqua-rim),
     0 10px 34px rgba(19, 45, 83, 0.16);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
 }
@@ -762,7 +858,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-bottom-color: transparent;
   background: var(--dsh-aqua-glass-card-dark);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--dsh-aqua-rim),
     0 8px 30px rgba(2, 6, 14, 0.32);
 }
 
@@ -811,7 +907,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   background: var(--dsh-aqua-glass-card-light);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    var(--dsh-aqua-rim),
     0 10px 34px rgba(19, 45, 83, 0.16);
 }
 
@@ -820,7 +916,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-right: 1px solid rgba(148, 180, 220, 0.2);
   background: var(--dsh-aqua-glass-card-dark);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--dsh-aqua-rim),
     0 8px 30px rgba(2, 6, 14, 0.32);
 }
 
@@ -865,7 +961,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-radius: 20px;
   background: var(--dsh-aqua-glass-card-light);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    var(--dsh-aqua-rim),
     0 10px 34px rgba(19, 45, 83, 0.16);
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px));
   overflow: hidden;
@@ -875,7 +971,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   border-color: rgba(148, 180, 220, 0.32);
   background: var(--dsh-aqua-glass-card-dark);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--dsh-aqua-rim),
     0 8px 30px rgba(2, 6, 14, 0.32);
 }
 
@@ -951,25 +1047,130 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   backdrop-filter: none;
 }
 
-/* ---------- Settings panel glass: material-only — a fixed 50px backdrop
-   blur with a scheme-differentiated translucent fill (the gate is
-   data-dsh-aqua, not the float attribute). The panel keeps its stock layout,
-   tokens and radius; only the surface turns glass. The `body` hop out-ranks
-   the generic `panel` surface rules. ---------- */
+/* ---------- Settings panel glass: material-only — a scheme-differentiated
+   translucent fill plus a backdrop blur (the gate is data-dsh-aqua, not the
+   float attribute). The panel keeps its stock layout, tokens and radius; only
+   the surface turns glass. The `body` hop out-ranks the generic `panel`
+   surface rules. ---------- */
 [data-dsh-aqua] body [role='dialog'] {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(50px);
+  /* The same edge recipe the panes use: a dialog is a pane of glass too, and
+     without it the surface reads as a flat translucent rectangle. The drop
+     shadow is restated because box-shadow replaces the host's. */
+  box-shadow: var(--dsh-aqua-rim), 0 28px 64px rgba(8, 16, 28, 0.28);
 }
 
 [data-dsh-aqua] body[data-ds-dark-theme] [role='dialog'] {
   background: rgba(17, 26, 39, 0.55);
+  box-shadow: var(--dsh-aqua-rim), 0 28px 64px rgba(0, 4, 10, 0.55);
 }
 
-/* ---------- Sidebar: the selected session gets an accent bar and a soft halo. ---------- */
-[data-dsh-float] [role='treeitem'][aria-selected='true'] {
+/* 设置页 is one of the pages the left menu opens, so its frost belongs to the
+   菜单页模糊度 knob — it used to be a hard-coded 50px that no control could
+   reach, which is why the knob looked inert while the page it lives on was
+   open. 1:1 with the knob (0 = clear glass), same as the column it covers. */
+[data-dsh-aqua] body [role='dialog'][data-shortcut-modal='settings'] {
+  backdrop-filter: blur(calc(var(--dsh-aqua-blur-pages, 14px) * var(--dsh-aqua-glass-scale, 1))) saturate(1.04);
+}
+
+/* ---------- Sidebar selection: a jelly block, not a filled row ----------
+   Both kinds of row — a conversation (`treeitem[aria-selected]`) and a menu
+   entry (the panel buttons carry `aria-current="page"` while their page is
+   open) — used to be marked by a solid fill. A flat tint on a translucent
+   sidebar reads as "this row happens to be a slightly different colour", and
+   it fought the glass: the fill was an opaque token painted straight over the
+   backdrop.
+
+   Selection is now a JELLY BLOCK:
+     · the row's own fill is cleared, so the backdrop keeps showing through;
+     · a ::before paints a soft specular gradient with a lit top edge and a
+       settled bottom edge — that is the gelatin body;
+     · the row itself pops, overshoots and settles (the keyframes below), which
+       is what makes the click feel physical rather than a repaint;
+     · a thin accent bar keeps the "this one" cue readable at a glance.
+
+   `transform` already creates the stacking context the ::before needs, so no
+   `isolation` is involved (it would turn the sidebar into a backdrop root and
+   kill every backdrop-filter underneath it). */
+[data-dsh-float] [role='treeitem'][aria-selected='true'],
+[data-dsh-float] [class*='sidebarCol'] [aria-current='page'] {
+  position: relative;
+  background: transparent !important;
+  transform-origin: left center;
+  transform: scale(1.012);
   box-shadow:
-    inset 2px 0 0 var(--dsw-specific-sidebar-nav-item-active-accent),
-    0 0 16px rgba(110, 155, 232, 0.14);
+    inset 2px 0 0 var(--dsw-specific-sidebar-nav-item-active-accent, var(--dsw-alias-state-business-primary)),
+    inset 0 1px 0 rgb(255 255 255 / 58%),
+    inset 0 -1px 0 rgb(19 45 83 / 10%),
+    0 2px 10px -2px rgb(19 45 83 / 18%);
+  animation: dsh-aqua-jelly 0.46s cubic-bezier(0.22, 1.4, 0.36, 1);
+  will-change: transform;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* The gelatin body: a specular sweep, brightest at the lit corner and thinning
+   towards the far edge, so the block has a top and a bottom instead of a flat
+   wash. Pointer-transparent — it must never eat a row click. */
+[data-dsh-float] [role='treeitem'][aria-selected='true']::before,
+[data-dsh-float] [class*='sidebarCol'] [aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 26%) 0%, rgb(255 255 255 / 6%) 46%, rgb(255 255 255 / 14%) 100%),
+    radial-gradient(120% 90% at 12% 0%, rgb(255 255 255 / 26%), transparent 62%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 58%),
+    inset 0 -2px 6px -2px rgb(255 255 255 / 20%),
+    inset 0 2px 8px -3px rgb(19 45 83 / 12%);
+}
+
+/* Dark appearance: the same body, dimmed — the white sweep at full strength on
+   a navy sidebar reads as a grey sticker. */
+[data-dsh-float] body[data-ds-dark-theme] [role='treeitem'][aria-selected='true']::before,
+[data-dsh-float] body[data-ds-dark-theme] [class*='sidebarCol'] [aria-current='page']::before {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 13%) 0%, rgb(255 255 255 / 3%) 46%, rgb(255 255 255 / 7%) 100%),
+    radial-gradient(120% 90% at 12% 0%, rgb(160 200 255 / 15%), transparent 62%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 24%),
+    inset 0 -2px 6px -2px rgb(255 255 255 / 7%),
+    inset 0 2px 8px -3px rgb(0 6 14 / 40%);
+}
+
+[data-dsh-float] body[data-ds-dark-theme] [role='treeitem'][aria-selected='true'],
+[data-dsh-float] body[data-ds-dark-theme] [class*='sidebarCol'] [aria-current='page'] {
+  box-shadow:
+    inset 2px 0 0 var(--dsw-specific-sidebar-nav-item-active-accent, var(--dsw-alias-state-business-primary)),
+    inset 0 1px 0 rgb(255 255 255 / 26%),
+    inset 0 -1px 0 rgb(0 6 14 / 46%),
+    0 2px 12px -2px rgb(0 6 14 / 46%);
+}
+
+/* Squash, overshoot, settle. A single transition cannot produce the rebound:
+   the row has to go PAST its resting size and come back, which only keyframes
+   can express. It runs when a row GAINS the selected attribute (that is when
+   the animation is applied), so the pop belongs to the click. */
+@keyframes dsh-aqua-jelly {
+  0% { transform: scale(0.955); }
+  42% { transform: scale(1.032); }
+  68% { transform: scale(0.994); }
+  86% { transform: scale(1.018); }
+  100% { transform: scale(1.012); }
+}
+
+/* Users who asked the OS for less motion still get the jelly's colour and
+   depth, just not the bounce. */
+@media (prefers-reduced-motion: reduce) {
+  [data-dsh-float] [role='treeitem'][aria-selected='true'],
+  [data-dsh-float] [class*='sidebarCol'] [aria-current='page'] {
+    animation: none;
+    transform: none;
+  }
 }
 
 /* ---------- Hover light: buttons and menu cells answer with a soft blue ring. ---------- */
@@ -1008,7 +1209,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   background: var(--dsh-aqua-glass-menu-light);
   border: 1px solid rgba(19, 45, 83, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    var(--dsh-aqua-rim),
     0 14px 38px rgba(19, 45, 83, 0.18);
   backdrop-filter: blur(calc(var(--dsh-aqua-blur, 14px) + 4px)) saturate(1.05);
 }
@@ -1018,7 +1219,7 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   background: var(--dsh-aqua-glass-menu-dark);
   border-color: rgba(148, 180, 220, 0.2);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--dsh-aqua-rim),
     0 14px 38px rgba(2, 6, 14, 0.45);
 }
 
@@ -1132,14 +1333,20 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   text-shadow: 0 0 1px rgba(255, 255, 255, 0.55), 0 1px 2px rgba(19, 45, 83, 0.08);
 }
 
+/* Display face = the user's pick, then the Aqua serif.
+   The host publishes a chosen family on --dsh-font-family-text (and removes it
+   when the field is cleared), so `var(<user pick>, <Aqua serif>)` keeps the
+   theme's two-voice look on a stock install AND lets 设置 → 外观 → 字体 reach
+   these two surfaces. Pinning the serif outright here is what made a font
+   change look "half applied": headings and the session tree stayed serif. */
 [data-dsh-float] [role='dialog'] h2 {
-  font-family: 'Space Grotesk Variable', 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: var(--dsh-font-family-text, 'Space Grotesk Variable', 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 [data-dsh-float] [role='treeitem'] {
-  font-family: 'Space Grotesk Variable', 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: var(--dsh-font-family-text, 'Space Grotesk Variable', 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif);
   font-weight: 500;
 }
 
@@ -1247,7 +1454,6 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
 }
 
-
 /* ---------- Reduced motion: keep the static look, drop every effect. ---------- */
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-float] [data-phase='hero'],
@@ -1344,33 +1550,55 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
 ) {
   font-family: var(--dsh-aqua-hint-family, inherit);
   font-weight: var(--dsh-aqua-hint-weight, 400);
-  opacity: var(--dsh-aqua-hint-opacity, 0.8);
+  /* Strength is NOT an element opacity. The region token already carries 浓度
+     as colour alpha (color-mix below), so writing `opacity` here dimmed the
+     small copy TWICE — 0.92 alpha × 0.80 opacity — and made the knob act
+     non-linearly on exactly the nodes that matched both rules. */
   /* Colour is delivered through the label-tertiary / label-caption token
      layer (see applyHintColorTokens) — a class-scoped color rule never matched
      the real explanatory nodes. */
 }
 
-/* ---------- Conversation blur, split in two ----------
-   The center column carries the readable glass sheet. Its blur now comes from
-   two knobs:
-   - 会话详情模糊度  → the transcript route (a [data-conversation-scroll] exists)
-   - 菜单页模糊度    → settings / feature pages (no transcript in the column)
+/* ---------- Conversation-area blur, split in two ----------
+   The center column carries the readable glass sheet, and BOTH knobs paint
+   that one surface — they differ only in WHICH view is on screen:
+   - 会话详情模糊度  → a session record is open (the transcript route)
+   - 菜单页模糊度    → a page opened from the LEFT MENU (设置页 / 插件、定时任务
+                       等功能页) is on screen instead
+
+   The discriminator used to be "does the column contain a transcript?". That
+   cannot work: the conversation view stays mounted (hidden) behind a global
+   panel — the host keeps sessions alive — so the column still matched
+   `:has([data-conversation-scroll])` on every menu route and the pages knob
+   was dead. The sidebar is the only element that knows which of the two is
+   showing, so the page state is read from it:
+   - a sidebar panel row carries aria-current="page" while its panel is open
+   - 设置 (the settings page every tab lives in) is its own dialog
+   Both rules below out-rank the transcript one (see the specificity note), so
+   opening a menu page switches the column over to the pages knob.
+
    A brand-new session (hero phase) stays sharp: the welcome screen keeps only
-   the sidebar / header / composer glass, as asked. ---------- */
-[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):has([data-conversation-scroll]) {
-  backdrop-filter: blur(var(--dsh-aqua-blur-chat, 14px)) saturate(1.04);
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur-chat, 14px)) saturate(1.04);
+   the sidebar / header / composer glass. ---------- */
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol'])::before {
+  backdrop-filter: blur(calc(var(--dsh-aqua-blur-chat, 14px) * var(--dsh-aqua-glass-scale, 1))) saturate(1.04);
 }
 
-[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):not(:has([data-conversation-scroll])) {
-  backdrop-filter: blur(var(--dsh-aqua-blur-pages, 14px)) saturate(1.04);
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur-pages, 14px)) saturate(1.04);
+/* Menu page on screen: the sidebar's own state is the source of truth.
+   The 设置 dialog is matched anywhere in the document — the host portals it, and
+   whether that portal lands inside the sidebar column or on <body> is not
+   something to bet the rule on; `data-shortcut-modal` is only set by that one
+   dialog, so a confirm popup does not switch the column over.
+   (0,3,1)+ beats the transcript rule's (0,3,0) above, so no !important is
+   needed and a future host rule still wins its own fights.) */
+[data-dsh-aqua]:has([class*='sidebarCol'] [aria-current='page']) :is([data-dsh-center], [class*='centerCol'])::before,
+[data-dsh-aqua]:has([data-shortcut-modal='settings']) :is([data-dsh-center], [class*='centerCol'])::before,
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):not(:has([data-conversation-scroll]))::before {
+  backdrop-filter: blur(calc(var(--dsh-aqua-blur-pages, 14px) * var(--dsh-aqua-glass-scale, 1))) saturate(1.04);
 }
 
 /* New session / welcome page: no blur on the column itself. */
-[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):has([data-phase='hero'], [data-content-phase='hero']) {
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']):has([data-phase='hero'], [data-content-phase='hero'])::before {
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* ---------- Per-region explanatory text ----------
@@ -1379,9 +1607,10 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
    rule would lose the cascade on exactly the nodes we need to reach. ---------- */
 [data-dsh-aqua] [class*='sidebarCol'] :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
   font-weight: var(--dsh-aqua-hint-w-sidebar, 400) !important;
-  opacity: var(--dsh-aqua-hint-o-sidebar, 0.92) !important;
-  color: var(--dsh-aqua-hint-c-sidebar, var(--dsw-alias-label-tertiary)) !important;
-  color: var(--dsh-aqua-hint-c-sidebar, var(--dsw-alias-label-tertiary)) !important;
+  /* Colour and strength ride the region token on the sidebar root (below).
+     Forcing `color` here (it used to be written twice) repainted EVERY node
+     whose class merely looked explanatory — the workspace heading among them,
+     which needed a separate patch to be un-painted again. */
 }
 
 [data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']) header :is([class*='_hint'], [class*='_caption'], [class*='_meta'], [class*='_summary'], [class*='_description'], [class*='_notice'], [class*='_subtitle'], [class*='_source'], [class*='_sep'], [class*='_time'], [class*='_secondary'], [class*='cm-'], [class*='_preview'], small, time) {
@@ -1444,13 +1673,48 @@ html[data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media='video'] body[
 [data-dsh-aqua] [data-dsh-inputbar] {
   --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-composer, var(--dsh-aqua-hint-c-base)) calc(var(--dsh-aqua-hint-o-composer, 0.92) * 100%), transparent);
   --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-c-composer, var(--dsh-aqua-hint-cc-base)) calc(var(--dsh-aqua-hint-o-composer, 0.92) * 100%), transparent);
-}/* Weight follows the colour range: the layer marks every node it finds painting
-   with the explanatory tokens, and these rules give those nodes their weight. */
-[data-dsh-aqua] [data-dsh-aqua-hint='sidebar'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-sidebar, 400) !important; }
-[data-dsh-aqua] [data-dsh-aqua-hint='header'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-header, 400) !important; }
-[data-dsh-aqua] [data-dsh-aqua-hint='chat'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-chat, 400) !important; }
-[data-dsh-aqua] [data-dsh-aqua-hint='composer'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-composer, 400) !important; }
-[data-dsh-aqua] [data-dsh-aqua-hint='rightbar'][data-dsh-aqua-hint] { font-weight: var(--dsh-aqua-hint-w-rightbar, 400) !important; }
+}
+
+/* Page region: the fallback for every route the four above do not own — the
+   插件 / 定时任务 / 设置 pages. Its copy had no region token at all, so 浓度
+   never reached it; it now takes the GLOBAL colour and strength. Declared on
+   the column, so the four regions above (declared deeper) still win inside
+   their own subtrees. */
+[data-dsh-aqua] :is([data-dsh-center], [class*='centerCol']) {
+  --dsw-alias-label-tertiary: color-mix(in srgb, var(--dsh-aqua-hint-c-base) calc(var(--dsh-aqua-hint-opacity, 0.8) * 100%), transparent);
+  --dsw-alias-label-caption: color-mix(in srgb, var(--dsh-aqua-hint-cc-base) calc(var(--dsh-aqua-hint-opacity, 0.8) * 100%), transparent);
+}/* Weight AND family follow the colour range: the layer marks every leaf it
+   finds painting with the explanatory tokens, and these rules give those nodes
+   their own weight and family. Both need `!important` — the host sets them on
+   hashed classes that out-rank a plain attribute selector.
+
+   `page` covers everything the four regions above do not own (插件 / 定时任务
+   pages and any route without a transcript); it has no card in the 区域 tab, so
+   it simply follows the GLOBAL knobs. */
+[data-dsh-aqua] [data-dsh-aqua-hint='sidebar'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-w-sidebar, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-aqua-hint='header'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-w-header, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-aqua-hint='chat'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-w-chat, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-aqua-hint='composer'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-w-composer, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-aqua-hint='rightbar'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-w-rightbar, 400) !important;
+}
+[data-dsh-aqua] [data-dsh-aqua-hint='page'][data-dsh-aqua-hint] {
+  font-family: var(--dsh-aqua-hint-family, inherit) !important;
+  font-weight: var(--dsh-aqua-hint-weight, 400) !important;
+}
 
 /* Sidebar group heading ("工作区" / Workspace).
    Two things were recolouring it: the per-region explanatory override rewrites

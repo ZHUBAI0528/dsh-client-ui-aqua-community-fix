@@ -111,7 +111,7 @@ export function apply(ctx: ClientContext): void {
       hintColorHeader: s.hintColorHeader,
       hintColorChat: s.hintColorChat,
       hintColorComposer: s.hintColorComposer,
-      paletteChat: s.paletteChat,
+      chatColor: s.chatColor,
       locale: ctx.locale.getLocale().active,
     }
   }
@@ -237,8 +237,8 @@ export function apply(ctx: ClientContext): void {
         layer.setPalette(id)
         sync()
       },
-      setPaletteChat: (id) => {
-        layer.setPaletteChat(id)
+      setChatColor: (id) => {
+        layer.setChatColor(id)
         sync()
       },
       setThemePreference: (id) => {

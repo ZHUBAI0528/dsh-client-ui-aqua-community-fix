@@ -385,10 +385,10 @@ export function FontPicker({ label, value, options, onChange, onRestore, restore
 export interface PaletteOption {
   id: string
   label: string
-  /** Light-mode colours (used for the "Aa" swatch). */
-  light: { primary: string, secondary: string, hint: string, accent: string }
-  /** Dark-mode colours. */
-  dark: { primary: string, secondary: string, hint: string, accent: string }
+  /** Light-appearance colours (the "Aa" swatch and the two chips). */
+  light: { primary: string, accent: string }
+  /** Dark-appearance colours — the REVERSE of the light half. */
+  dark: { primary: string, accent: string }
   /** True when the current appearance is dark (picks which half to preview). */
   darkMode: boolean
 }
@@ -400,21 +400,37 @@ export interface PalettePickerProps {
   onChange: (id: string) => void
   /** Accessible name for "follow the theme" rows without colours. */
   themeLabel: string
+  /** Sentence rendered in the scheme's own ink inside the hover tooltip. */
+  sample: string
+  /** Second tooltip line rendered in the scheme's accent colour. */
+  accentSample: string
+  /** Localized "light preview" / "dark preview" — the tooltip's mode badge. */
+  modeLabel: string
 }
 
 /**
  * Colour-scheme picker: one card per scheme with a real "Aa" sample rendered in
- * that scheme's own ink, plus three dots for secondary / hint / accent. The
- * card is what makes the switch obvious at a glance.
+ * that scheme's own ink plus two chips (body ink / accent). Hovering a card
+ * opens a tooltip that shows both colours on live text and closes the moment the
+ * pointer leaves.
+ *
+ * The card sits on the SAME translucent fill as the transcript it previews, and
+ * its "Aa" is close to body-text size — a bright card on an opaque slab with a
+ * huge sample read stronger than the text it was advertising, which is why the
+ * applied result always looked weaker than the preview.
  */
-export function PalettePicker({ label, value, options, onChange }: PalettePickerProps) {
+export function PalettePicker({ label, value, options, onChange, sample, accentSample, modeLabel }: PalettePickerProps) {
   return (
     <div className={css.paletteBlock}>
       <span className={css.knobLabel}>{label}</span>
       <div className={css.paletteGrid} role="radiogroup" aria-label={label}>
-        {options.map(option => {
+        {options.map((option) => {
           const ink = option.darkMode ? option.dark : option.light
           const isTheme = ink.primary === ''
+          // The tooltip anchors to the card edge that faces INTO the panel; the
+          // last column is picked by `.paletteCard:nth-child(4n) > .paletteTip`
+          // in the stylesheet. Deriving the column from the JS index broke the
+          // moment the grid went from three columns to four.
           return (
             <button
               key={option.id}
@@ -422,22 +438,37 @@ export function PalettePicker({ label, value, options, onChange }: PalettePicker
               role="radio"
               aria-checked={option.id === value}
               className={option.id === value ? `${css.paletteCard} ${css.paletteCardActive}` : css.paletteCard}
+              style={isTheme
+                ? undefined
+                : ({ '--palette-ink': ink.primary, '--palette-accent': ink.accent } as React.CSSProperties)}
               onClick={() => { onChange(option.id) }}
             >
-              <span
-                className={css.paletteAa}
-                style={{ color: isTheme ? undefined : ink.primary }}
-              >
-                Aa
+              <span className={css.paletteTop}>
+                <span
+                  className={css.paletteAa}
+                  style={{ color: isTheme ? undefined : ink.primary }}
+                >
+                  Aa
+                </span>
+                <span className={css.paletteMode} aria-hidden="true">{option.darkMode ? '☾' : '☀'}</span>
               </span>
               <span className={css.paletteName}>{option.label}</span>
               {!isTheme && (
-                <span className={css.paletteDots}>
-                  <i style={{ background: ink.secondary }} />
-                  <i style={{ background: ink.hint }} />
+                <span className={css.paletteDots} aria-hidden="true">
+                  <i style={{ background: ink.primary }} />
                   <i style={{ background: ink.accent }} />
                 </span>
               )}
+              <span className={css.paletteTip} role="tooltip">
+                <span className={css.paletteTipHead}>
+                  <span className={css.paletteTipName}>{option.label}</span>
+                  <span className={css.paletteTipMode}>{modeLabel}</span>
+                </span>
+                <span className={css.paletteTipSample} style={{ color: isTheme ? undefined : ink.primary }}>{sample}</span>
+                {!isTheme && (
+                  <span className={css.paletteTipAccent} style={{ color: ink.accent }}>{accentSample}</span>
+                )}
+              </span>
             </button>
           )
         })}

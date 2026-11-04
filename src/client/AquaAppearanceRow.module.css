@@ -33,6 +33,16 @@
   gap: 10px;
 }
 
+/* One control plus the note that belongs to it. Tighter than the stack gap, so
+   the note reads as attached to its own row instead of floating between two
+   settings. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 /* Label + segmented picker row (mode / backdrop source). */
 .row {
   display: flex;
@@ -81,6 +91,18 @@
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-tertiary);
+}
+
+/* Inside a .stack the 4px gap already provides the separation; the -4px tuck
+   would pull the note back onto the control. */
+.stack .knobHint {
+  margin-top: 0;
+}
+
+/* Notes that follow a MULTI-ROW control (the scheme grid, a dot row) need real
+   space: -4px there makes the note sit inside the last row's padding. */
+.hintAfter {
+  margin-top: 8px;
 }
 
 /* Boolean toggle pill (particle whale), same language as the master switch. */
@@ -799,36 +821,83 @@ body[data-ds-dark-theme] .fontFamilyPresets {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  /* Four columns: 17 schemes fit in 5 short rows instead of 6 tall ones, and
+     the block stops dominating the tab. The tooltip's inward anchor follows
+     this count automatically (see .paletteCard:nth-child(4n) below). */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .paletteCard {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 6px 8px;
   border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-2);
+  border-radius: 10px;
+  /* Same translucent fill as the transcript the scheme will paint, mixed with a
+     little of the scheme's own ink. Two consequences: the card no longer sits
+     on an opaque desktop slab (which made every preview look denser than the
+     real page), and it follows the current appearance / frost automatically
+     instead of using a hard-coded surface. */
+  background: color-mix(in srgb, var(--palette-ink, transparent) 7%, var(--dsh-aqua-glass-card-light, rgb(255 255 255 / 42%)));
+  box-shadow: var(--dsh-aqua-rim, inset 0 1px 0 rgb(255 255 255 / 30%));
   cursor: pointer;
   text-align: left;
+  transition: border-color 0.16s var(--ds-ease-in-out), box-shadow 0.16s var(--ds-ease-in-out);
+}
+
+body[data-ds-dark-theme] .paletteCard {
+  background: color-mix(in srgb, var(--palette-ink, transparent) 12%, var(--dsh-aqua-glass-card-dark, rgb(34 38 47 / 50%)));
 }
 
 .paletteCard:hover {
-  border-color: var(--dsw-alias-border-l3);
+  border-color: color-mix(in srgb, var(--palette-ink, var(--dsw-alias-border-l3)) 50%, var(--dsw-alias-border-l3));
 }
 
+/* Selection is expressed with the SCHEME'S OWN accent (which already flips with
+   the appearance) rather than the desktop preset's brand primary — the preset
+   blue looked foreign next to a warm scheme and stayed put when 外观 flipped. */
 .paletteCardActive {
-  border-color: var(--dsw-alias-brand-primary);
-  box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary);
+  border-color: color-mix(in srgb, var(--palette-accent, var(--dsw-alias-label-tertiary)) 78%, transparent);
+  box-shadow:
+    var(--dsh-aqua-rim, inset 0 1px 0 rgb(255 255 255 / 30%)),
+    0 0 0 2px color-mix(in srgb, var(--palette-accent, var(--dsw-alias-label-tertiary)) 34%, transparent);
 }
 
-/* The "Aa" sample IS the scheme: it renders in that scheme's own ink. */
+/* "Follow the theme" has no accent of its own: fall back to the scheme ink so
+   the selected card still reads as selected in both appearances. */
+.paletteCardActive:not([style*='--palette-accent']) {
+  border-color: color-mix(in srgb, var(--dsw-alias-label-primary) 55%, var(--dsw-alias-border-l3));
+  box-shadow:
+    var(--dsh-aqua-rim, inset 0 1px 0 rgb(255 255 255 / 30%)),
+    0 0 0 2px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+}
+
+/* Ink sample + the appearance the swatch is showing (☀ light / ☾ dark). */
+.paletteTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* The "Aa" sample IS the scheme. Size and weight are deliberately close to body
+   text (17px / 600): the old 20px / 700 sample read heavier than the applied
+   result, so picking a scheme always felt like a downgrade. */
 .paletteAa {
-  font-size: 15px;
-  line-height: 20px;
+  font-size: 17px;
+  line-height: 21px;
   font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.paletteMode {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 14px;
 }
 
 .paletteName {
@@ -840,18 +909,100 @@ body[data-ds-dark-theme] .fontFamilyPresets {
   text-overflow: ellipsis;
 }
 
-/* Three dots: secondary / hint / accent. */
+/* Two chips only: body ink + accent — the two colours a scheme really has. */
 .paletteDots {
   display: flex;
-  gap: 3px;
-  margin-top: 2px;
+  gap: 4px;
+  margin-top: 3px;
 }
 
 .paletteDots i {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1px solid rgb(0 0 0 / 12%);
+  border: 1px solid rgb(255 255 255 / 45%);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 18%);
+}
+
+/* ---------- Scheme tooltip (hover only) ----------
+   Opens while one card is hovered or keyboard-focused and closes on leave. It
+   renders ABOVE the page's z-stack but inside the card box, anchored to the
+   inward edge so it never widens the scroll container. */
+.paletteTip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 45;
+  width: 210px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsh-aqua-glass-menu-light, var(--dsw-alias-bg-layer-1));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 30px rgb(0 0 0 / 24%);
+  pointer-events: none;
+  text-align: left;
+}
+
+/* The last card of each row anchors its tooltip to the right edge; otherwise it
+   would spill past the scroll container and spawn a horizontal scrollbar. `4n`
+   tracks `.paletteGrid`'s column count — change both together. */
+.paletteCard:nth-child(4n) > .paletteTip {
+  left: auto;
+  right: 0;
+}
+
+.paletteTipEnd {
+  left: auto;
+  right: 0;
+}
+
+.paletteCard:hover > .paletteTip,
+.paletteCard:focus-visible > .paletteTip {
+  display: block;
+}
+
+body[data-ds-dark-theme] .paletteTip {
+  background: var(--dsh-aqua-glass-menu-dark, var(--dsw-alias-bg-layer-1));
+}
+
+.paletteTipHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.paletteTipName {
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+.paletteTipMode {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.paletteTipSample {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 600;
+}
+
+.paletteTipAccent {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 17px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ---------- Hover preview bubble ---------- */
@@ -1016,7 +1167,9 @@ body[data-ds-dark-theme] .fontFamilyPresets {
 .fontRestoreAll {
   background-color: var(--dsh-aqua-glass-menu-light, rgb(255 255 255 / 42%));
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
+  /* Standard `backdrop-filter` only: with the prefixed alias beside it the
+     bundler keeps just the alias and drops the standard property. */
+  box-shadow: var(--dsh-aqua-rim, inset 0 1px 0 rgb(255 255 255 / 22%));
 }
 
 body[data-ds-dark-theme] .groupHead,
@@ -1029,12 +1182,11 @@ body[data-ds-dark-theme] .fontRestoreAll {
   background-color: var(--dsh-aqua-glass-menu-dark, rgb(18 26 38 / 46%));
 }
 
-/* Group header as a small glass block. */
+/* Group header as a small glass block (the rim comes from the shared block). */
 .groupHead {
   padding: 7px 10px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
-  box-shadow: 0 1px 0 rgb(255 255 255 / 22%) inset;
 }
 
 .groupHead:hover {
@@ -1054,7 +1206,7 @@ body[data-ds-dark-theme] .fontRestoreAll {
   padding: 8px 10px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
-  box-shadow: 0 10px 26px rgb(0 0 0 / 14%);
+  box-shadow: var(--dsh-aqua-rim, inset 0 1px 0 rgb(255 255 255 / 22%)), 0 10px 26px rgb(0 0 0 / 14%);
   width: max-content;
   max-width: min(100%, 320px);
 }
@@ -1122,7 +1274,6 @@ body[data-ds-dark-theme] .fontRestoreAll {
   border-radius: 10px;
   background-color: var(--dsh-aqua-glass-menu-light, rgb(255 255 255 / 42%));
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   line-height: 18px;
@@ -1177,7 +1328,6 @@ body[data-ds-dark-theme] .tabCardActive:hover {
   background-repeat: no-repeat;
   padding-right: 20px;
   backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 14px)) saturate(1.05);
 }
 
 body[data-ds-dark-theme] .weightSelect {

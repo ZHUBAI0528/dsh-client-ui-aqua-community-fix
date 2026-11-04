@@ -24,7 +24,7 @@ import { startSubmenuHold } from './submenu-hold.ts'
 import { mountWhale, type WhaleHandle } from './whale.ts'
 import { mountMesh, type MeshHandle } from './mesh.ts'
 import { startSpotlight, SPOTLIGHT_ATTRIBUTE } from './spotlight.ts'
-import { FONT_SIZE_SPECS, findPalette, hintColorValue, paletteTokens, type FontRole } from './typography.ts'
+import { chatColorValue, FONT_SIZE_SPECS, findPalette, hintColorValue, paletteTokens, schemeHint, type FontRole } from './typography.ts'
 
 /** html attribute selecting the Aqua layer: CSS hooks and ambient effects. */
 export const AQUA_ATTRIBUTE = 'data-dsh-aqua'
@@ -74,6 +74,11 @@ const HINT_REGIONS: ReadonlyArray<readonly [string, string]> = [
   ['header', '[data-dsh-center] header, [class*="centerCol"] header'],
   ['chat', '[data-conversation-scroll]'],
   ['composer', '[data-composer-card], [data-dsh-inputbar]'],
+  // LAST, and deliberately the whole column: it catches every route the four
+  // regions above do not own — the 插件 / 定时任务 / 设置 pages above all. Their
+  // small copy used to fall through to the global class-name rule, which the
+  // host's own hashed rules outrank, so 说明文字字体 / 粗细 never reached them.
+  ['page', '[data-dsh-center], [class*="centerCol"]'],
 ]
 
 /**
@@ -83,6 +88,21 @@ const HINT_REGIONS: ReadonlyArray<readonly [string, string]> = [
  * it never shipped with.
  */
 const REGION_HINT_DEFAULTS = { weight: 400, opacity: 92 } as const
+
+/**
+ * A region explanatory value that still equals the shipped default means
+ * "follow the global knob on the 字体字号 page".
+ *
+ * The region knobs used to win outright (`!important` + a literal 400 / 92),
+ * which is exactly why 说明文字粗细 and 说明文字浓度 looked dead everywhere:
+ * both landed on the region variables, and those were never the global ones.
+ * Comparing against the shipped value keeps the promise the panel already made
+ * ("默认跟随全局") without a migration: only a value the user actually moved
+ * becomes an override.
+ */
+function resolveRegionHint(own: number, shipped: number, global: number): number {
+  return own === shipped ? global : own
+}
 
 /** Override-stack source for the explanatory-text colour (layered above the palette). */
 const HINT_COLOR_SOURCE = '@zhubai0528/dsh-client-ui-aqua-community-fix/hint'
@@ -102,8 +122,19 @@ const both = (value: string): { light: string; dark: string } => ({ light: value
  * the Appearance preference — dark is deep-sea navy, light is cool white-blue.
  */
 export const AQUA_TOKEN_OVERRIDES: ThemeTokenOverrides = {
-  // Typography: Space Grotesk for Latin/digits, CJK keeps the system stack.
-  '--dsw-font-family': both(FONT_STACK),
+  // Typography: the USER's family when one is picked anywhere (设置 → 外观 →
+  // 字体, or this panel's pickers), otherwise the Aqua Latin face.
+  //
+  // This must stay a var() reference, never a literal stack. The host applies
+  // every token of this layer as an INLINE custom property on <body>, and its
+  // own sheet computes `body{--dsw-font-family: var(--dsh-font-family-text,
+  // …default…)}`. A literal here therefore outranked that formula and pinned
+  // the whole app to Space Grotesk: every font family change, from this panel
+  // or from 设置, was accepted, persisted, and then silently overridden while
+  // the layer was on — and came back the moment the layer was switched off.
+  // Referencing the host variable keeps the design default (the host only sets
+  // it when the user picks something) and lets the picker win when they do.
+  '--dsw-font-family': both(`var(--dsh-font-family-text, ${FONT_STACK})`),
 
   // Backgrounds.
   '--dsw-alias-bg-base': { light: '#F4F8FD', dark: '#0C121B' },
@@ -347,8 +378,8 @@ export interface AquaSettings {
   hintWeightComposer: number
   hintOpacityComposer: number
   hintColorComposer: string
-  /* Conversation-only colour scheme (empty = follow the global font colour). */
-  paletteChat: string
+  /* Conversation-only ink (empty = follow the font colour scheme). */
+  chatColor: string
 }
 
 /** Shipped defaults — what a first-time install sees (the tuned look). */
@@ -413,7 +444,7 @@ const SETTINGS_DEFAULTS: AquaSettings = {
   hintWeightComposer: 400,
   hintOpacityComposer: 92,
   hintColorComposer: '',
-  paletteChat: '',
+  chatColor: '',
 }
 
 /** Numeric knob keys and their localStorage names. */
@@ -461,9 +492,12 @@ type NumericKey = keyof typeof NUMERIC_KEYS
 const STRING_KEYS = {
   palette: 'dsh.ui-aqua.palette',
   hintFont: 'dsh.ui-aqua.hintFont',
-  /* Font families are owned HERE, not mirrored from the host: the host write
-     lands on --dsh-font-family-{role} which nothing consumes, and reading it
-     back returned '' — that is what snapped the picker to the default. */
+  /* The panel's own copy of the pick, purely so the dropdown renders the right
+     entry. The host stays the owner of what is IN FORCE: it is written through
+     theme.setFontFamily and published on --dsh-font-family-{role}. (Reading it
+     back to refresh this field is still not done — the host normalizes the
+     list, and a normalized-vs-stored mismatch would show every pick as
+     "custom".) */
   fontText: 'dsh.ui-aqua.fontText',
   fontCode: 'dsh.ui-aqua.fontCode',
   hintColor: 'dsh.ui-aqua.hintColor',
@@ -471,7 +505,10 @@ const STRING_KEYS = {
   hintColorHeader: 'dsh.ui-aqua.hintCHeader',
   hintColorChat: 'dsh.ui-aqua.hintCChat',
   hintColorComposer: 'dsh.ui-aqua.hintCComposer',
-  paletteChat: 'dsh.ui-aqua.paletteChat',
+  // NEW KEY on purpose: the old one held a PALETTE id, and palette ids collide
+  // with ink ids ("ink" is both) — reusing it would silently repaint transcripts
+  // from a value the user never picked for this control.
+  chatColor: 'dsh.ui-aqua.chatColor',
 } as const
 type StringKey = keyof typeof STRING_KEYS
 
@@ -717,6 +754,10 @@ export class AquaLayer {
   private hintObserver: MutationObserver | undefined
   /** Throttle for the marking pass. */
   private hintStampTimer: number | undefined
+  /** Set when the explanatory colour basis changed; consumed by the next pass. */
+  private hintRebuild = false
+  /** Palette + explanatory colour + scheme the current stamps were made for. */
+  private hintKey = ''
   /** Nodes added since the last marking pass (the only real work per frame). */
   private hintPending = new Set<HTMLElement>()
   /** Per-region explanatory colour, re-probed only when the theme re-applies. */
@@ -928,7 +969,7 @@ export class AquaLayer {
       hintWeightComposer: readSetting('hintWeightComposer'),
       hintOpacityComposer: readSetting('hintOpacityComposer'),
       hintColorComposer: readStringSetting('hintColorComposer'),
-      paletteChat: readStringSetting('paletteChat'),
+      chatColor: readStringSetting('chatColor'),
       lineHeight: readSetting('lineHeight'),
       weightBody: readSetting('weightBody'),
       weightHeading: readSetting('weightHeading'),
@@ -1222,12 +1263,16 @@ export class AquaLayer {
       this.settings[key] = stack
       writeStringSetting(key, stack)
     }
-    // Best-effort host sync (设置 still shows the value); the host's own read-back
-    // is NOT used, because its write target is a variable nothing consumes.
+    // The host is the write path: setFontFamily persists the list and
+    // republishes --dsh-font-family-{role} on <body>, which is exactly the
+    // variable the token sheet expands into every consumer (and the one the
+    // override layer above defers to). 设置 → 字体 shows the same value.
     try {
       this.ctx.theme.setFontFamily(role, stack)
-    } catch {
-      /* host refused the stack — our own copy still applies */
+    } catch (error) {
+      // The host refused (unknown role / unreadable list). The saved copy still
+      // drives this panel's dropdown, so the refusal must not pass silently.
+      console.warn('[aqua] the host refused a font-family write', role, stack, error)
     }
     if (this.enabled) this.scheduleApply()
   }
@@ -1237,11 +1282,11 @@ export class AquaLayer {
     this.writeFontRole('text', stack)
   }
 
-  /** Pick the conversation-only colour scheme (empty = follow the global one). */
-  setPaletteChat(id: string): void {
-    if (id === this.settings.paletteChat) return
-    this.settings.paletteChat = id
-    writeStringSetting('paletteChat', id)
+  /** Pick the conversation-only ink (empty = follow the font colour scheme). */
+  setChatColor(id: string): void {
+    if (id === this.settings.chatColor) return
+    this.settings.chatColor = id
+    writeStringSetting('chatColor', id)
     if (this.enabled) this.scheduleApply()
   }
 
@@ -1541,6 +1586,13 @@ export class AquaLayer {
     if (this.hintStampTimer !== undefined) return
     this.hintStampTimer = window.setTimeout(() => {
       this.hintStampTimer = undefined
+      // A colour / scheme change re-defines which nodes ARE explanatory, so the
+      // whole set has to be re-evaluated — the incremental queue only ever
+      // looks at newly added nodes.
+      if (this.hintRebuild) {
+        this.hintRebuild = false
+        this.hintFullPass(true)
+      }
       this.flushHintNodes()
     }, 300)
   }
@@ -1549,6 +1601,9 @@ export class AquaLayer {
   private markHintLeaf(el: HTMLElement, region: string, target: string): void {
     if (el.hasAttribute('data-dsh-aqua-hint')) return
     if (el.childElementCount > 0) return
+    // Code and editable text carry their own family; recolouring them as
+    // explanatory copy is fine, but restyling them (monospace / IME) is not.
+    if (el.closest('code, pre, kbd, samp, textarea, input') !== null) return
     if (getComputedStyle(el).color === target) el.setAttribute('data-dsh-aqua-hint', region)
   }
 
@@ -1575,7 +1630,11 @@ export class AquaLayer {
   }
 
   /** One full scan, used when the layer mounts. */
-  private hintFullPass(): void {
+  private hintFullPass(rebuild = false): void {
+    if (rebuild) {
+      for (const el of document.querySelectorAll('[data-dsh-aqua-hint]')) el.removeAttribute('data-dsh-aqua-hint')
+      this.hintTargets.clear()
+    }
     for (const [region, selector] of HINT_REGIONS) {
       const root = document.querySelector<HTMLElement>(selector)
       if (root === null) continue
@@ -1675,6 +1734,14 @@ export class AquaLayer {
   private applySettings(): void {
     const style = document.documentElement.style
     style.setProperty('--dsh-aqua-blur', `${this.settings.blur}px`)
+    // The column sheet is a SINGLE backdrop layer for the whole reading area:
+    // a backdrop-filter ancestor swallows every child's own filter, so the
+    // header / composer / bubble blur can never add to it (measured: their
+    // computed blur changes nothing while the sheet exists). The material knob
+    // therefore scales the sheet itself, anchored at its 20px default so the
+    // shipped look is unchanged: 0 = no glass blur anywhere, 40 = twice the
+    // route's base.
+    style.setProperty('--dsh-aqua-glass-scale', String(this.settings.blur / 20))
     // Frost 0-100 → a 0-1.4 alpha multiplier (50 = 1x). Capped so max frost
     // stays translucent frosted glass instead of collapsing to a solid
     // opaque slab (the dark card would otherwise hit 100% and read as solid
@@ -1743,15 +1810,17 @@ export class AquaLayer {
     style.setProperty('--dsh-aqua-hint-opacity', String(this.settings.hintOpacity / 100))
     if (this.settings.hintFont) style.setProperty('--dsh-aqua-hint-family', this.settings.hintFont)
     else style.removeProperty('--dsh-aqua-hint-family')
-    // Conversation-only font colour: written as plain variables on <html> and
-    // consumed only when the attribute is present, so "follow global" stays a
-    // no-op rather than a second, competing colour source.
-    const chatScheme = findPalette(this.settings.paletteChat)
-    const chatInk = this.dark ? chatScheme.dark : chatScheme.light
-    if (chatInk.primary) {
-      style.setProperty('--dsh-aqua-chat-ink-primary', chatInk.primary)
-      style.setProperty('--dsh-aqua-chat-ink-secondary', chatInk.secondary)
-      style.setProperty('--dsh-aqua-chat-ink-accent', chatInk.accent)
+    // Conversation-only ink: ONE colour (字体颜色 → 会话字体颜色). It is written
+    // as plain variables on <html> and consumed only while the attribute is
+    // present, so "follow the scheme" stays a no-op rather than a second,
+    // competing colour source. All three ink hooks take the same value: a solid
+    // scheme has no second tone, and inventing one is what made the old
+    // palette-based picker unclear.
+    const chatInk = chatColorValue(this.settings.chatColor, this.dark)
+    if (chatInk !== '') {
+      style.setProperty('--dsh-aqua-chat-ink-primary', chatInk)
+      style.setProperty('--dsh-aqua-chat-ink-secondary', chatInk)
+      style.setProperty('--dsh-aqua-chat-ink-accent', chatInk)
       document.documentElement.setAttribute('data-dsh-aqua-chat-ink', '')
     } else {
       style.removeProperty('--dsh-aqua-chat-ink-primary')
@@ -1767,15 +1836,17 @@ export class AquaLayer {
     // the region rule rewrites, so the declaration was dropped and neither the
     // colour nor the strength ever applied.
     const schemePalette = findPalette(this.settings.palette)
-    const schemeInk = this.dark ? schemePalette.dark : schemePalette.light
+    // The scheme's explanatory tone is DERIVED from its two colours, so a scheme
+    // change tints the small copy too instead of leaving it grey.
+    const schemeInkHint = schemeHint(schemePalette, this.dark)
     // The per-region "follow" value means "follow the GLOBAL explanatory
     // colour" (字体颜色 → 说明性文字颜色), not "follow the colour scheme".
     // Order: explicit global explanatory colour → that scheme's hint → neutral.
     const globalHint = hintColorValue(this.settings.hintColor, this.dark)
     const baseHint = globalHint !== ''
       ? globalHint
-      : schemeInk.hint !== ''
-        ? schemeInk.hint
+      : schemeInkHint !== ''
+        ? schemeInkHint
         // "Follow the theme" has no palette hint of ours — use a neutral that
         // matches the host's explanatory tone closely enough for the fallback.
         : (this.dark ? '#A9B8C9' : '#5A6472')
@@ -1787,8 +1858,12 @@ export class AquaLayer {
     style.setProperty('--dsh-aqua-blur-pages', `${this.settings.blurPages}px`)
     for (const region of REGIONS) {
       const fields = REGION_HINT_FIELDS[region]
-      style.setProperty(`--dsh-aqua-hint-w-${region}`, String(this.settings[fields.weight]))
-      style.setProperty(`--dsh-aqua-hint-o-${region}`, String(this.settings[fields.opacity] / 100))
+      // An untouched region follows the global knobs (see resolveRegionHint);
+      // only a value the user moved becomes a local override.
+      const weight = resolveRegionHint(this.settings[fields.weight], REGION_HINT_DEFAULTS.weight, this.settings.hintWeight)
+      const opacity = resolveRegionHint(this.settings[fields.opacity], REGION_HINT_DEFAULTS.opacity, this.settings.hintOpacity)
+      style.setProperty(`--dsh-aqua-hint-w-${region}`, String(weight))
+      style.setProperty(`--dsh-aqua-hint-o-${region}`, String(opacity / 100))
       const regionColor = hintColorValue(this.settings[fields.color], this.dark)
       if (regionColor) style.setProperty(`--dsh-aqua-hint-c-${region}`, regionColor)
       else style.removeProperty(`--dsh-aqua-hint-c-${region}`)
@@ -1800,22 +1875,26 @@ export class AquaLayer {
     // variable was written here but never read by any rule; the colour reaches
     // the UI through the token override below, so the variable is gone.)
     this.hintTargets.clear()
-
-    // FONT FAMILY BRIDGE. The host writes the picked family to
-    // --dsh-font-family-{role}, but its token sheet reads
-    // --dsh-font-family-{role}-default — nothing consumes the former, which is
-    // exactly why picking a code font did nothing. Our inline values sit above
-    // the token layer, so both the body and the code blocks finally follow the
-    // pickers. Empty means "let the theme stack win".
-    if (this.settings.fontText) style.setProperty('--dsw-font-family', this.settings.fontText)
-    else style.removeProperty('--dsw-font-family')
-    if (this.settings.fontCode) {
-      style.setProperty('--ds-font-family-code', this.settings.fontCode)
-      style.setProperty('--dsw-font-markdown-code-font-family', this.settings.fontCode)
-    } else {
-      style.removeProperty('--ds-font-family-code')
-      style.removeProperty('--dsw-font-markdown-code-font-family')
+    // When the colour BASIS moves, nodes that used to paint in the explanatory
+    // colour no longer do (and vice versa), so the stamps have to be rebuilt
+    // rather than merely extended. Weight / family / strength changes do NOT
+    // need this: they ride the variables those stamps already point at.
+    const hintKey = `${this.settings.palette}|${this.settings.hintColor}|${this.dark ? 'd' : 'l'}`
+    if (hintKey !== this.hintKey) {
+      this.hintKey = hintKey
+      this.hintRebuild = true
+      this.stampHintNodes()
     }
+
+    // FONT FAMILY: no override here, on purpose.
+    // The host publishes the user's family as --dsh-font-family-{role} on
+    // <body> and its own sheet expands it into --dsw-font-family /
+    // --ds-font-family-code, so `theme.setFontFamily` (see writeFontRole) is
+    // the whole write path and both the panel's pickers and 设置 → 字体 land on
+    // the same variable. Stamping a family on <html> here used to add nothing
+    // (body's inline tokens out-rank an inherited value) and, worse, it hid a
+    // host-side "clear the font" behind a stale copy of our own setting. The
+    // one thing that needed fixing lives in AQUA_TOKEN_OVERRIDES above.
 
     this.applyPaletteTokens()
     // Layered AFTER the palette on purpose: the theme service composes override

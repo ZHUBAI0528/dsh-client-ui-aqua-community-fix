@@ -15,7 +15,7 @@ import {
   Collapsible, ColorDots, fileToDataUrl, FontPicker, Knob, PalettePicker, PreviewBubble, ResetButton, Segmented, TabBar, WeightSelect,
   type FontPickerOption,
 } from './AquaControls.tsx'
-import { CODE_FONT_PRESETS, HINT_COLORS, TEXT_FONT_PRESETS, TEXT_PALETTES, type FontRole } from './typography.ts'
+import { CHAT_COLORS, CODE_FONT_PRESETS, HINT_COLORS, paletteName, TEXT_FONT_PRESETS, TEXT_PALETTES, type FontRole } from './typography.ts'
 import { deleteImportedFont, ensureImportedFontFaces, FontImportError, releaseImportedFont, saveImportedFont, verifyImportedFont, type ImportedFont } from './font-store.ts'
 import { loadVideoHandle, saveVideoBlob, saveVideoHandle } from './wallpaper-store.ts'
 import type { AquaRowState } from './settings-store.ts'
@@ -149,8 +149,8 @@ export interface AquaPanelContentInjected {
   resetRegionHints: () => void
   /** Restore one region (weights + explanatory trio). */
   resetRegion: (region: 'sidebar' | 'header' | 'chat' | 'composer') => void
-  /** Conversation-only colour scheme (empty = follow the global one). */
-  setPaletteChat: (id: string) => void
+  /** Conversation-only ink preset (empty = follow the font colour scheme). */
+  setChatColor: (id: string) => void
   /** Re-request permission for a remembered video file. */
   authorizeVideo: () => void
 }
@@ -179,13 +179,13 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const { t, useStore } = props
   const {
     setBlur, setFrost, setFluidHue, setFluidDepth, setBgBrightness,
-    setBackground, setWallpaper, setWhale, setCritters, setMesh, setSpotlight, setSubmenuHold, setMenuOpacity, setChatAlpha,
+    setBackground, setWallpaper, setWhale, setCritters, setMesh, setSpotlight, setSubmenuHold, setMenuOpacity,
     setWallpaperBlur, setWallpaperFrost, setVideoBlur, setVideoBrightness, authorizeVideo,
     setFontText, setFontCode, setFontSizeRole, setLineHeight, setWeightBody, setWeightHeading, setPalette,
     resetFontText, resetFontCode, resetFontSizeRole, resetLineHeight, resetWeights, resetPalette,
     setThemePreference,
     setRegionWeight, setHintWeight, setHintOpacity, setHintFont, setHintColor, resetRegionWeights, resetHint,
-    setBlurChat, setBlurPages, setRegionHintNumber, setRegionHintColor, resetRegionHints, resetRegion, setPaletteChat,
+    setBlurChat, setBlurPages, setRegionHintNumber, setRegionHintColor, resetRegionHints, resetRegion, setChatColor,
   } = props
 
   const blur = useStore(s => s.blur)
@@ -202,7 +202,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const spotlight = useStore(s => s.spotlight)
   const submenuHold = useStore(s => s.submenuHold)
   const menuOpacity = useStore(s => s.menuOpacity)
-  const chatAlpha = useStore(s => s.chatAlpha)
   const wallpaper = useStore(s => s.wallpaper)
   const wallpaperBlur = useStore(s => s.wallpaperBlur)
   const wallpaperFrost = useStore(s => s.wallpaperFrost)
@@ -244,7 +243,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
   const hintWeightComposer = useStore(s => s.hintWeightComposer)
   const hintOpacityComposer = useStore(s => s.hintOpacityComposer)
   const hintColorComposer = useStore(s => s.hintColorComposer)
-  const paletteChat = useStore(s => s.paletteChat)
+  const chatColor = useStore(s => s.chatColor)
   const locale = useStore(s => s.locale)
 
   /** Read a picked image; `fileToDataUrl` rejects on oversize / undecodable files. */
@@ -455,10 +454,6 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
     })()
   }
 
-  /** The colour scheme currently in force, for the preview bubbles. */
-  const activePalette = TEXT_PALETTES.find(item => item.id === palette) ?? TEXT_PALETTES[0]
-  const scheme = dark ? activePalette.dark : activePalette.light
-
   /** The five glass regions, in reading order, with their live values. */
   const regionRows = [
     { key: 'sidebar' as const, label: t('aqua.regionSidebar'), body: weightBodySidebar, heading: weightHeadingSidebar, hintW: hintWeightSidebar, hintO: hintOpacitySidebar, hintC: hintColorSidebar },
@@ -512,9 +507,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
       >
         <Knob label={t('aqua.blur')} value={blur} min={0} max={40} step={0.5} unit="px" onChange={setBlur} />
         <Knob label={t('aqua.frost')} value={frost} min={0} max={100} step={1} unit="%" onChange={setFrost} />
-        <Knob label={t('aqua.blurChat')} value={blurChat} min={0} max={40} step={0.5} unit="px" onChange={setBlurChat} />
-        <Knob label={t('aqua.blurPages')} value={blurPages} min={0} max={40} step={0.5} unit="px" onChange={setBlurPages} />
-        <div className={css.knobHint}>{t('aqua.blurChatHint')}；{t('aqua.blurPagesHint')}</div>
+        {/* 会话区两态模糊度住在【背景】页：它们描述的是背景透出多少，不是材质本身 */}
       </Collapsible>
 
       {/* 背景 */}
@@ -612,7 +605,20 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
         <div className={css.knobHint}>
           {t(dark ? 'aqua.bgBrightnessHintDark' : 'aqua.bgBrightnessHintLight')}
         </div>
-        <Knob label={t('aqua.chatAlpha')} value={chatAlpha} min={0} max={100} step={1} unit="%" onChange={setChatAlpha} />
+
+        {/* 会话区模糊度：按左侧边栏的状态二选一，同一时刻只有一个生效。
+            两个旋钮各占一行，注释紧跟在自己那一项下面 — side by side the two
+            notes ran together and it was impossible to tell which knob each
+            described. */}
+        <div className={css.stack}>
+          <Knob label={t('aqua.blurChat')} value={blurChat} min={0} max={40} step={0.5} unit="px" onChange={setBlurChat} />
+          <div className={css.knobHint}>{t('aqua.blurChatHint')}</div>
+        </div>
+        <div className={css.stack}>
+          <Knob label={t('aqua.blurPages')} value={blurPages} min={0} max={40} step={0.5} unit="px" onChange={setBlurPages} />
+          <div className={css.knobHint}>{t('aqua.blurPagesHint')}</div>
+        </div>
+
         <Knob label={t('aqua.menuOpacity')} value={menuOpacity} min={0} max={100} step={1} unit="%" onChange={setMenuOpacity} />
       </Collapsible>
 
@@ -712,11 +718,11 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
             deleteLabel={t('aqua.deleteFont')}
           />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
-          <PreviewBubble
-            text={t('aqua.hintGroupHint')}
-            style={{ fontWeight: hintWeight, opacity: hintOpacity / 100 }}
-          />
         </div>
+        {/* The hover bubble is gone: the note sits in the page, right under the
+            picker, exactly like 正文字体 does. A tooltip that only appears while
+            the pointer is over the row is unreadable while you are choosing. */}
+        <div className={css.knobHint}>{t('aqua.hintFontHint')}</div>
         <div className={css.fieldRow}>
           <Knob label={t('aqua.hintWeight')} value={hintWeight} min={300} max={800} step={100} unit="" ticks={WEIGHT_TICKS} onChange={setHintWeight} />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
@@ -742,9 +748,14 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
             label={t('aqua.textColorScheme')}
             value={palette}
             themeLabel={optionLabel(TEXT_PALETTES[0])}
+            sample={t('aqua.paletteTipSample')}
+            accentSample={t('aqua.paletteTipAccent')}
+            modeLabel={dark ? t('aqua.palettePreviewDark') : t('aqua.palettePreviewLight')}
             options={TEXT_PALETTES.map(item => ({
               id: item.id,
-              label: optionLabel(item),
+              // The label spells out the two colours the card is SHOWING, so it
+              // flips with the appearance together with the swatches.
+              label: paletteName(item, chinese, dark),
               light: item.light,
               dark: item.dark,
               darkMode: dark,
@@ -752,31 +763,24 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
             onChange={setPalette}
           />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetPalette} />
-          <PreviewBubble
-            text={t('aqua.previewScheme')}
-            style={{ color: scheme.primary === '' ? undefined : scheme.primary, fontWeight: weightBody }}
-            accentText={scheme.accent === '' ? undefined : `↗ ${optionLabel(activePalette)}`}
-          />
         </div>
-        <div className={css.knobHint}>{t('aqua.textColorHint')}</div>
+        <div className={`${css.knobHint} ${css.hintAfter}`}>{t('aqua.textColorHint')}</div>
 
+        {/* 会话字体颜色：纯色方案，跟「说明性文字颜色」同一套交互 */}
         <div className={css.fieldRow}>
-          <PalettePicker
+          <ColorDots
             label={t('aqua.colorChat')}
-            value={paletteChat}
-            themeLabel={optionLabel(TEXT_PALETTES[0])}
-            options={TEXT_PALETTES.map(item => ({
+            value={chatColor}
+            options={CHAT_COLORS.map(item => ({
               id: item.id,
               label: optionLabel(item),
-              light: item.light,
-              dark: item.dark,
-              darkMode: dark,
+              color: item.id === '' ? '' : (dark ? item.dark : item.light),
             }))}
-            onChange={setPaletteChat}
+            onChange={setChatColor}
           />
-          <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setPaletteChat('') }} />
+          <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={() => { setChatColor('') }} />
         </div>
-        <div className={css.knobHint}>{t('aqua.colorChatHint')}</div>
+        <div className={`${css.knobHint} ${css.hintAfter}`}>{t('aqua.colorChatHint')}</div>
 
         <div className={css.fieldRow}>
           <ColorDots
@@ -791,7 +795,7 @@ export function AquaPanelContent(props: AquaPanelContentComponentProps) {
           />
           <ResetButton label={t('aqua.fontReset')} title={t('aqua.fontResetTitle')} onClick={resetHint} />
         </div>
-        <div className={css.knobHint}>{t('aqua.hintGroupHint')}</div>
+        <div className={`${css.knobHint} ${css.hintAfter}`}>{t('aqua.hintColorHint')}</div>
       </Collapsible>
 
       {/* 区域：五大玻璃区域，结构与「背景」组一致，每组一个折叠卡片 */}

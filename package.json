@@ -1,7 +1,7 @@
 {
   "name": "@zhubai0528/dsh-client-ui-aqua-community-fix",
-  "description": "Aqua glass theme for DeepSeek Harness V0.2.1-rc.2 — adjustable blur, frost, fluid or wallpaper backdrop, unified corners, and motion",
-  "version": "2.0.3",
+  "description": "玻璃主题：可调模糊与磨砂、流体或壁纸背景、统一圆角与动效、字体字号与文字配色，让界面通透有质感",
+  "version": "2.0.5",
   "publishConfig": {
     "access": "public"
   },
@@ -67,12 +67,12 @@
   "license": "AGPL-3.0-only",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.3 <0.3.0",
-    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-rc.3 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.3 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-theme": ">=0.2.1-rc.3 <0.3.0",
-    "@deepseek-ai/dsh-invariants": ">=0.1.0-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-0 <0.3.0",
+    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-theme": ">=0.2.1-0 <0.3.0",
+    "@deepseek-ai/dsh-invariants": ">=0.1.0-0 <0.3.0",
     "react": "^18.2.0"
   },
   "devDependencies": {
@@ -102,6 +102,6 @@
     "assets"
   ],
   "engines": {
-    "dsh": ">=0.2.1-rc.3 <0.3.0"
+    "dsh": ">=0.2.1-0 <0.3.0"
   }
 }

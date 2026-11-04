@@ -8,11 +8,12 @@ English | [中文](README.zh.md)
 
 | Item | Value |
 |---|---|
-| **DSH desktop / web** | **V0.2.1-rc.3** |
-| Host client packages | `@deepseek-ai/dsh-client-*` **0.2.1-rc.3** |
-| Declared in metadata | `package.json` → `engines.dsh: ">=0.2.1-rc.3 <0.3.0"` |
+| **DSH desktop / web** | **the whole 0.2.x line** |
+| Host client packages | `@deepseek-ai/dsh-client-*` **0.2.x** |
+| Declared range | `package.json` → `engines.dsh: ">=0.2.1-0 <0.3.0"` |
+| Declared in metadata | `package.json` → `engines.dsh: ">=0.2.1-rc.2 <0.3.0"` |
 
-**V0.2.1-rc.3 is the version this release is built and verified against** — the theme hooks are read from that host build (page-head markup, composer/dock seams, slot names). These are private client surfaces, so a DSH upgrade can break the look or the mount even though nothing changes here. If you are on another DSH build, treat the theme as unsupported and keep a profile backup.
+**V0.2.1-rc.2 is the version this release is built and verified against** — the theme hooks are read from that host build (page-head markup, composer/dock seams, slot names). These are private client surfaces, so a DSH upgrade can break the look or the mount even though nothing changes here. If you are on another DSH build, treat the theme as unsupported and keep a profile backup.
 
 ## Topics / community listing
 
@@ -29,8 +30,8 @@ Published under the `dsh-plugin` topic, so it shows up on the [dsh-plugin commun
 | Base of this fork | upstream **v1.3.0** sources |
 | Maintained by | **ZHUBAI0528** — [repository](https://github.com/ZHUBAI0528/dsh-client-ui-aqua-community-fix) |
 | This package | `@zhubai0528/dsh-client-ui-aqua-community-fix` |
-| Version | **2.0.3** |
-| **DSH support** | **V0.2.1-rc.3** |
+| Version | **2.0.5** |
+| **DSH support** | **>=0.2.1-0 <0.3.0** |
 | License | **AGPL-3.0** (inherited from upstream `LICENSE`; original copyright and licence notice retained verbatim) |
 
 Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web UI and desktop app. The floating header, composer and stats line, and the trajectory view become panes of frosted glass, while the main column can sit on the living fluid board or on your own wallpaper (image or video); the sidebar keeps its stock look. Switch it off and the stock UI comes back exactly, with no source changes to DSH itself.
@@ -45,11 +46,11 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ## Differences from upstream v1.3.0
 
-| Item | Upstream v1.3.0 | This package v2.0.3 |
+| Item | Upstream v1.3.0 | This package v2.0.5 |
 |---|---|---|
 | Layout modes | **Mica + Compatibility**, switchable | **Mica only** — compatibility mode and its selector are removed (tokens and styles too) |
 | Edge blur bands | 5px gradient blur bands at the top/bottom (an upstream feature) | **Removed** — they read as an extra gradient wash over the page edges; readability is carried by the column veil instead (the 13px edge fade stays) |
-| Submenu opacity | not available | **New** setting, default 96%, in the same group as "Chat surface opacity" |
+| Submenu opacity | not available | **New** setting, default 96%, a fill stop alongside the chat slab veil |
 | Submenu click | opens on hover, then a click closes it | **New "click keeps it open"**: a hover-opened submenu survives the click and closes on the next one; works at any depth via ARIA, keyboard Enter unaffected |
 | Popup material | `62% × frost` fill (≈8.7% by default), text behind was legible through it | **96%** fill + `blur + 4px`, panels no longer show the text behind |
 | Composer and stats line | two panes with a 6px gap | **one continuous piece of glass** (single radius, hairline divider) |
@@ -70,7 +71,7 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 - **Free backdrop**: the living fluid board (hue and depth adjustable) or your own wallpaper — images and video both supported; wallpapers have their own blur and frost, video adds a brightness knob
 - **Desktop scheme following**: tracks the desktop app's light/dark switch and re-tunes the palette, glow and brightness direction on its own
 - **Background brightness**: follows the resolved scheme — dark 0–50 darkens, light 50–100 brightens, 50 is unchanged
-- **Chat surface opacity**: 0 lets the wallpaper/fluid show untouched, 100 is an opaque slab
+- **Two conversation blurs**: one for an open session record, one for pages opened from the left menu; the sidebar's state picks between them
 - **Submenu opacity**: fill strength for popups (menus, dropdowns, quick-invoke panels), independent of the cards
 - **Submenu display**: popups get a 96% fill plus extra blur, so multi-level menus stay legible above the transcript
 - **Submenu interaction → click keeps it open**: a hover-opened submenu stays open when clicked, and closes on the next click
@@ -86,12 +87,12 @@ Aqua is a highly customizable glassmorphism theme for the DeepSeek Harness web U
 
 ### Option 1: desktop app — install from the in-app plugins page (recommended)
 
-Open **DeepSeek Harness 0.2.1-rc.3** and click **Plugins** in the left sidebar.
+Open **DeepSeek Harness** and click **Plugins** in the left sidebar.
 
 Click **Add plugin**, then enter the following in the "package name or address" field:
 
 ```
-github:zhubai0528/dsh-client-ui-aqua-community-fix
+@zhubai0528/dsh-client-ui-aqua-community-fix
 ```
 
 No npm and no terminal needed — the plugin is pulled from that GitHub repository's latest release. Reload the UI and it is on.
@@ -109,7 +110,7 @@ Options:
 | Flag | Meaning |
 |---|---|
 | `-Profile desktop` | target profile (default `web`) |
-| `-Version v2.0.3` | pin a version (default: npm's `latest`; the script reads the dist-tag and pins it, because pnpm's `minimumReleaseAge` otherwise resolves to an older release) |
+| `-Version v2.0.5` | pin a version (default: npm's `latest`; the script reads the dist-tag and pins it, because pnpm's `minimumReleaseAge` otherwise resolves to an older release) |
 | `-DshHome <path>` | DSH home (default `%USERPROFILE%\.dsh`) |
 | `-Link` | **development only**, see below |
 
@@ -166,12 +167,14 @@ The panel is a tab strip, one page per tab:
 
 | Tab | Contents |
 |---|---|
-| `Glass material` | glass blur, frost, conversation blur, menu page blur |
-| `Backdrop` | fluid / wallpaper, hue, colour depth, background brightness, chat surface opacity, submenu opacity |
+| `Glass material` | glass blur, frost |
+| `Backdrop` | fluid / wallpaper, hue, colour depth, background brightness, conversation blur, menu page blur, submenu opacity |
 | `Font & size` | face sources, the three sizes, body / heading weights, explanatory weight and strength |
-| `Font colours` | body palette, a separate palette for the conversation, global explanatory colour |
+| `Font colours` | font colour schemes (two colours each, reversed with the appearance), a solid conversation ink, global explanatory colour |
 | `Regions` | per-region weights and explanatory overrides for sidebar / header / conversation / composer, line height, per-region reset |
 | `Decorations` | particle whale, fish, interactive mesh, cursor glow, click keeps submenus open |
+
+Every glass surface shares one **edge recipe**: a 1px rim light along the outline, a lit corner plus the opposite corner's shade (together they read as glass thickness), and a soft refraction fringe along the top and bottom edges — cool white in light mode, a dimmer rim with a cool blue fringe in dark mode, so the edge never looks like a painted white border.
 
 The choice is remembered: leaving the page and coming back — or restarting DSH — lands on the tab you were last on (stored under `dsh.ui-aqua.panelTab`); pick `Backdrop` to go back to the default.
 
@@ -203,12 +206,15 @@ The two wallpaper types expose different knobs: images get **Wallpaper blur** an
 | Menu page blur | all | 0–40 px | 0.5 px | 14 px |
 | Frost | all | 0–100% | 1% | 7% |
 | Background brightness | all | dark 0–50 / light 50–100 | 1% | 50 |
-| Chat surface opacity | all | 0–100% | 1% | 25% |
 | Submenu opacity | all | 0–100% | 1% | 96% |
 
 **Background brightness** narrows its range with the active scheme: dark mode offers 0–50 (0 fades to pure black, 50 unchanged) and light mode offers 50–100 (50 unchanged, 100 brightens to pure white). The other half is unreachable, so a value picked in one scheme stays inert in the other.
 
-**Chat surface opacity** at 0 lets the backdrop show through untouched; at 100 the chat slab is fully opaque. **Submenu opacity** is a separate knob because popovers float above body and composer text and need a denser fill than the cards.
+**Submenu opacity** is a separate knob because popovers float above body and composer text and need a denser fill than the cards. The chat slab still carries a thin veil (25%, no longer exposed as a knob) — the two blur knobs already decide how much of the backdrop shows through.
+
+The conversation area carries two blur knobs and picks one by the **left sidebar's state**, so only one is ever in force: **Conversation blur** while a session record is open, **Menu page blur** while a page opened from the left menu (settings, plugins, schedules) is on screen. The settings page's own frost follows the latter too, so dragging it there shows the change immediately.
+
+**Glass blur** also scales that same readable sheet (20 px is the 1.0 baseline, 0 clears it entirely, 40 doubles it). That is not a shortcut: the column carries the only backdrop blur in the chat, and nothing inside it — the header card, the composer, the bubbles — can add a blur of its own, so the material knob has to act on that layer for it to reach them.
 
 ### Things to know
 
@@ -218,7 +224,9 @@ The two wallpaper types expose different knobs: images get **Wallpaper blur** an
 
 ## Fonts and typography
 
-The **Font & size** tab covers three things: where the faces come from, how big they are, and how heavy they are. **Font colours** and **Regions** are separate tabs — the first sets body colour and the explanatory-text colour source, the second fine-tunes each region.
+The **Font & size** tab covers three things: where the faces come from, how big they are, and how heavy they are, with the note under each control saying what it reaches. **Font colours** and **Regions** are separate tabs — the first sets body colour and the explanatory-text colour source, the second fine-tunes each region.
+
+**Font colour schemes** sit in four columns and carry two colours each (body ink + accent) — the name spells out exactly those two, so it flips with the appearance ("Ink · Vermilion" in light, "Cloud · Amber" in dark) and never advertises a colour the card is not showing. The selected card is outlined with the scheme's own accent instead of the desktop preset's blue. Hovering a scheme opens a tooltip that closes on leave. **Conversation ink** is a single solid colour for the transcript, and **explanatory colour** now offers thirteen stops; following the scheme picks up that scheme's derived explanatory tone.
 
 **Where faces come from** — body, code and explanatory copy each have their own picker, defaulting to `Theme default`. The built-ins fall into three groups: system faces (Microsoft YaHei, DengXian, SimHei, SimSun, KaiTi, Consolas, Cascadia Code), open source (Source Han Sans / Serif, LXGW WenKai, Sarasa Mono, JetBrains Mono) and free for commercial use (MiSans, HarmonyOS Sans). A preset is only a `font-family` candidate list — **it takes effect only if the face is installed**, otherwise the next fallback applies.
 
