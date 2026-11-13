@@ -1,43 +1,95 @@
-## Aqua v2.0.5 — 果冻选中、色彩方案重排、插件描述中文化
+## Aqua v2.0.6 — 中文 README 成为默认，插件页开关修好了
 
-本版处理三项：侧边栏选中效果、字体色彩方案（布局 / 命名 / 配色 / 预览一致性）、插件包信息。
-没有改动任何旋钮的取值范围，已有配置照旧读取。
+本版没有代码改动，只修安装脚本和文档。
 
-### 1. 侧边栏菜单选中：去掉底色，改成果冻动效
+### 1. 中文 README 成为默认
 
-菜单行（`aria-current="page"`）与会话行（`treeitem[aria-selected]`）原先都用宿主的不透明填充标选中——在玻璃侧边栏上既挡住背景，又像"这行恰好颜色不同"。
+此前 `README.md` 是英文、中文在 `README.zh.md`，所以 GitHub 首页和 npm 详情页都先显示英文。
 
-- **底色清空**，两行共用同一套规则
-- `::before` 画**果冻体积**：受光角最亮的镜面渐变 + 顶部亮线 + 底部沉淀线，浅色冷白、深色弱白配冷蓝
-- `@keyframes` 做**压扁 → 过冲 → 回落 → 定住**的弹性（0.955 → 1.032 → 0.994 → 1.018 → 1.012），挂上选中属性即触发，回弹属于点击这一下
-- 外阴影 + 内高光 + 内暗边三层给**立体感**，`transform-origin: left center` 让放大只向右扩
-- `prefers-reduced-motion` 下取消动画与缩放，保留颜色与深度
-- 不用 `isolation` 建层叠上下文（会重新产生 backdrop root，吃掉侧边栏内的玻璃模糊）
+现在互换：**`README.md` 是中文**，英文移到 `README.en.md`，顶部的语言互跳链接同步更新。npm 的 readme 取自 `README.md`，详情页随之变中文。
 
-### 2. 字体色彩方案
+### 2. 插件页的开关点不动？
 
-- **四列布局**（原三列）：17 套方案 6 行 → 5 行；tooltip 的锚点改由 `:nth-child(4n)` 判断，不再写死 JS 列索引
-- **名称与颜色对齐**：旧名「墨黑 · 云雾白」在浅色下只显示「墨黑 + 朱橙」，第二段颜色根本不在卡片上。现在每套方案存**浅色 / 深色两份名字**，两段分别是**正文字色 + 强调色**，随【外观】切换（浅色「墨黑 · 朱橙」↔ 深色「云雾白 · 蜜橙」）
-- **预览贴近实际**：`Aa` 20 px/700 → **17 px/600**；卡片底色由不透明的 `bg-layer-2` 换成**正文那层玻璃**（再混 7%/12% 方案墨色），预览落在真实阅读面上；tooltip 同样换成玻璃底
-- **选中底色随主题自适应**：原来用桌面端预置主色 `--dsw-alias-brand-primary`（恒定蓝，暖色方案旁很突兀、切外观也不变），改为用**方案自己的强调色**描边 + 外环；「跟随主题」回落到当前 label 主色
+如果你遇到过——在插件页或插件市场里开关 Aqua 没反应，或者提示「被更高优先级配置覆盖」，市场日志里反复出现 `-> off: fiber=true`——那不是你操作错了，主题也一直是好的。
 
-### 3. 菜单详情页的大面积纯色底
+原因：Aqua 是 bundle 类插件，加载行只写在包内的 `cordis.patch.yml` 里。而 DSH 要能启用/禁用某个插件，还需要 profile 自己的 `cordis.patch.yml` 里有一条**同 id** 的行作为 patch 目标。没有这条，宿主把该条目判为 `unaddressable`：插件照常运行，但开关既写不进去，也关不掉。
 
-插件 / 定时任务 / 市场 / 设置页的**内层**（详情面板、保存栏、提示条、搜索框）仍在用 `--dsw-alias-bg-base` / `bg-layer-*` 画不透明底。
+现在 `install.ps1` 装完会自动补上这一条（npm 与 `-Link` 两条路径都覆盖）：
 
-不记宿主哈希类名（每次发版都会变），改为在**菜单页状态下重写这四个 surface token**（挂在会话列，只影响列内子树）：`bg-base` → 透明，`bg-layer-1/2/3` → 26%/36%/46% 白（深色 44%/56%/68% 深蓝灰）。任何用这些 token 的容器——包括以后新增的页面——自动变玻璃。作用范围限定在侧边栏有选中菜单项时，会话详情不受影响；模态遮罩 `bg-overlay` 刻意不动。
-
-### 4. 插件信息
-
-- `package.json` 的 `description` 改为**中文优先**：可调模糊与磨砂、流体或壁纸背景、统一圆角与动效、字体字号与文字配色；去掉 `V0.2.1-rc.3` 版本明细
-- README 的版本适配改为 **0.2.x 整条线**（`engines.dsh: ">=0.2.1-0 <0.3.0"`），不再钉单个 rc 号
-
-### 升级方式
-
-```powershell
-npm i -g @zhubai0528/dsh-client-ui-aqua-community-fix@2.0.5   # 或按 install.ps1
+```yaml
+- id: ui-aqua
+  name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
+  disabled: false
 ```
 
-装完**重启 DSH** 生效。
+- **幂等**：已有就跳过，重复执行不会多出第二条
+- **不动你的禁用状态**：只在该行不存在时追加
+- `name` 必须是**包名**，不是 `ui-aqua`
 
-Artifact: `lib/client.js`, 412,103 bytes, digest `55ad0129…`.
+已经装好的用户要修，把上面三行加到 profile 的 `cordis.patch.yml` 末尾（Windows 默认 `%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`），重启即可。重跑一次安装脚本也一样。
+
+### 3. 顺手修掉 `-Link` 模式两个缺陷
+
+- 读补丁文件时缺 UTF-8 声明，默认编码会把中文注释读成乱码再写回去
+- 「已注册」判断会匹配插入块里的缩进行，导致明明没写 insert 却以为写过了
+
+### 4. 文档
+
+中英文 README 各新增一节「故障排查 / Troubleshooting」。正文没改。
+
+### 升级
+
+```
+dsh plugin --profile desktop add @zhubai0528/dsh-client-ui-aqua-community-fix@2.0.6
+```
+
+设置照旧，无需迁移。
+
+---
+
+## Aqua v2.0.6 — Chinese README by default, and the Plugins-page toggle fixed
+
+No code changes this release — the installer and the docs only.
+
+### 1. Chinese README is now the default
+
+`README.md` used to hold the English text (Chinese lived in `README.zh.md`), so GitHub and the npm page both opened in English.
+
+The files are swapped: **`README.md` is Chinese**, English moved to `README.en.md`, and both language links were updated. npm takes its readme from `README.md`, so the detail page follows.
+
+### 2. Plugins-page toggle does nothing?
+
+If enabling or disabling Aqua from the Plugins page or the market had no effect, or the app said a higher-priority overlay wins while the market log repeated `-> off: fiber=true` — that was not a mistake on your side, and the theme itself kept running.
+
+Cause: Aqua is a bundle plugin, so its loader row lives only in the patch file shipped inside the package. The app can only switch a plugin on or off when the profile's own `cordis.patch.yml` carries a row with the **same id** to write into. Without it the entry is reported as `unaddressable`: it runs, but the toggle neither writes nor stops it.
+
+`install.ps1` now appends that row after a successful install (both the npm and `-Link` paths):
+
+```yaml
+- id: ui-aqua
+  name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
+  disabled: false
+```
+
+- **Idempotent**: skipped when the row is already there
+- **Leaves your disabled state alone**: only appended when missing
+- `name` must be the **package name**, not `ui-aqua`
+
+To fix an existing install, add those three lines to the end of the profile's `cordis.patch.yml` (on Windows, `%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`) and restart. Re-running the installer does the same.
+
+### 3. Two fixes in `-Link` mode
+
+- reading the patch file without a UTF-8 declaration mangled its Chinese comments and wrote the mojibake back
+- the "already registered" check matched indented rows inside an insert block, so a missing insert looked present
+
+### 4. Docs
+
+Both READMEs gained a Troubleshooting section. No other text changed.
+
+### Upgrade
+
+```
+dsh plugin --profile desktop add @zhubai0528/dsh-client-ui-aqua-community-fix@2.0.6
+```
+
+Settings carry over; nothing to migrate.

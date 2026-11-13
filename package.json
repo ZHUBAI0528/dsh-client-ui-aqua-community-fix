@@ -1,7 +1,7 @@
 {
   "name": "@zhubai0528/dsh-client-ui-aqua-community-fix",
   "description": "玻璃主题：可调模糊与磨砂、流体或壁纸背景、统一圆角与动效、字体字号与文字配色，让界面通透有质感",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "publishConfig": {
     "access": "public"
   },
