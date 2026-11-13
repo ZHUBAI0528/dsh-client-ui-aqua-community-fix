@@ -250,6 +250,32 @@ ln -s "$PWD/dsh-client-ui-aqua-community-fix" "$DSH_HOME/profiles/web/node_modul
 
 设置分两层：字号由宿主主题服务管理（与「设置 → 外观」里的字号是同一份，两边改了互相同步），字体与字重由本插件保存。
 
+## 故障排查
+
+### 插件页的开关点了没反应，或提示「被更高优先级配置覆盖」
+
+**症状**：在插件页或插件市场里开关 Aqua 没有效果，市场日志反复出现
+`-> off: fiber=true`；但主题本身是好的，界面正常。
+
+**原因**：Aqua 是 bundle 类插件，它的加载行只写在包内的 `cordis.patch.yml` 里。
+DSH 要能启用/禁用某个插件，还需要 profile 自己的 `cordis.patch.yml` 里有一条**同 id**
+的行作为 patch 目标。没有这条，宿主把该条目判为 `unaddressable`——插件照常运行，
+但开关既写不进去，也关不掉。
+
+**修复**：在 profile 的 `cordis.patch.yml` 末尾加三行（Windows 默认在
+`%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`）：
+
+```yaml
+- id: ui-aqua
+  name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
+  disabled: false
+```
+
+`name` 必须是**包名**（不能写成 `ui-aqua`），否则宿主仍判为不可寻址。加完重启生效。
+
+重跑一次 `install.ps1` 也会自动补上这行（幂等，已存在则跳过）。
+装插件前如果在插件页批量禁用过所有插件，升级 DSH 后最容易遇到这种情况。
+
 ## 从上游 1.x 升级
 
 - `dsh.ui-aqua.mode` 不再被读取：此前选过「兼容模式」的用户会直接落到云母布局（键值保留，不会被清除）

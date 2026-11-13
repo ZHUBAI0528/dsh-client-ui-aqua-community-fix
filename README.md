@@ -251,6 +251,36 @@ Explanatory strength steps in 5% but reads as one continuous fade, so it carries
 
 Two layers of state: sizes belong to the host theme service (the same value as Settings → Appearance, kept in sync both ways), while faces and weights are stored by this plugin.
 
+## Troubleshooting
+
+### The Plugins-page toggle does nothing, or the app says a higher-priority overlay wins
+
+**Symptom**: enabling or disabling Aqua from the Plugins page or the market has no
+effect, and the market log repeats `-> off: fiber=true`. The theme itself still
+renders fine.
+
+**Cause**: Aqua is a bundle plugin — its loader row lives only in the patch file
+shipped inside the package. For the app to be able to switch a plugin on or off,
+the profile's own `cordis.patch.yml` also needs a row with the **same id** to act
+as the patch target. Without it the entry is reported as `unaddressable`: the
+plugin runs, but the toggle neither writes nor stops it.
+
+**Fix**: append these three lines to the profile's `cordis.patch.yml` (on
+Windows, `%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`):
+
+```yaml
+- id: ui-aqua
+  name: '@zhubai0528/dsh-client-ui-aqua-community-fix'
+  disabled: false
+```
+
+`name` must be the **package name** (not `ui-aqua`), or the entry stays
+unaddressable. Restart after saving.
+
+Re-running `install.ps1` adds this row automatically (idempotent; it skips when
+the row is already there). This shows up most often after disabling every plugin
+in the Plugins page and then upgrading the app.
+
 ## Upgrading from upstream 1.x
 
 - `dsh.ui-aqua.mode` is no longer read: users who picked Compatibility land on the mica layout (the stored value is left untouched, not destroyed)

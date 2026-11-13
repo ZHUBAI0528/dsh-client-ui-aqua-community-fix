@@ -60,6 +60,59 @@ function Write-Utf8NoBom {
     [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom)
 }
 
+# Give the plugin an id-targeted row in the PROFILE's cordis.patch.yml.
+#
+# The app resolves a manageable plugin row by looking for a patch entry with the
+# same id in the profile file. An entry that exists only in the package's bundle
+# insert has no such row, so the Plugins page marks it "unaddressable": the
+# toggle appears to work, nothing is written, and the market keeps retrying and
+# logging "off: fiber=true". One row fixes that - it is the patch target the app
+# writes `disabled` into.
+#
+# Idempotent, and it never touches an existing row (a user who disabled the
+# plugin keeps it disabled). The `name` must be the PACKAGE name: the app also
+# compares it against the loader entry's module name, and a mismatch is yet
+# another reason to call the row unaddressable.
+#
+# @returns 'present' | 'added' | 'created'
+function Add-AddressableRow {
+    param(
+        [Parameter(Mandatory)][string]$PatchFile,
+        [Parameter(Mandatory)][string]$Id,
+        [Parameter(Mandatory)][string]$Package
+    )
+
+    $row = @"
+# Aqua: id-targeted row so the Plugins page can enable/disable the plugin.
+# The bundle row lives in the package patch, which leaves the loader entry
+# unaddressable; this row is the patch target the app writes `disabled` into.
+- id: $Id
+  name: '$Package'
+  disabled: false
+"@
+
+    if (-not (Test-Path $PatchFile)) {
+        Write-Utf8NoBom -Path $PatchFile -Text ($row + "`n")
+        return 'created'
+    }
+
+    # -Encoding UTF8 is required: this file carries Chinese comments, and
+    # PowerShell 5.1 otherwise decodes it as ANSI and writes mojibake back.
+    $content = Get-Content $PatchFile -Raw -Encoding UTF8
+    if ($null -eq $content) { $content = '' }
+
+    # Top-level row only (column 0). A `- id:` nested inside a bundle-style
+    # `- insert:` block is indented and is not a patch target of its own.
+    $pattern = '(?m)^-[ \t]+id:[ \t]+' + [regex]::Escape($Id) + '[ \t]*$'
+    if ($content -match $pattern) { return 'present' }
+
+    $base = ($content -replace '(?s)\[\s*\]\s*$', '').TrimEnd()
+    if ($base -eq '') { $new = $row + "`n" }
+    else { $new = $base + "`n`n" + $row + "`n" }
+    Write-Utf8NoBom -Path $PatchFile -Text $new
+    return 'added'
+}
+
 # Locate the dsh CLI. PATH first, then the install directory of a running
 # instance, then the two conventional layouts.
 function Resolve-DshCli {
@@ -188,6 +241,21 @@ if (-not $Link) {
         $env:DSH_HOME = $prevDshHome
     }
     if ($exit -ne 0) { throw "dsh plugin add failed (exit $exit)" }
+
+    # The package is installed either way; a row failure is reported, not fatal.
+    try {
+        $rowState = Add-AddressableRow -PatchFile (Join-Path $profileRoot 'cordis.patch.yml') `
+            -Id 'ui-aqua' -Package $plugin
+        if ($rowState -eq 'present') {
+            Write-Host '  plugin row already in cordis.patch.yml.' -ForegroundColor DarkGray
+        } else {
+            Write-Host "  added the plugin row to cordis.patch.yml ($rowState) - the Plugins page can toggle it now." -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "  could not add the plugin row: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host '    Aqua is installed, but the Plugins-page toggle needs this row:' -ForegroundColor Yellow
+        Write-Host "      - id: ui-aqua`n        name: '$plugin'" -ForegroundColor Yellow
+    }
 
     Write-Host ''
     Write-Host 'Done. Start (or reload) the app - Aqua is enabled; open the "Glass theme" page in the left sidebar to adjust it.' -ForegroundColor Green
@@ -361,15 +429,29 @@ $entryText = @'
 if (-not (Test-Path $patchFile)) {
     Write-Utf8NoBom -Path $patchFile -Text ($entryText + "`n")
 } else {
-    $content = Get-Content $patchFile -Raw
-    # Match the real list entry only, not the "duplicate loader entry id: ui-aqua" comment.
-    if ($content -match '(?m)^\s*-\s+id:\s*ui-aqua\s*$') {
+    # -Encoding UTF8: this file carries Chinese comments; the PS 5.1 default
+    # (ANSI) would decode them into mojibake and write that back.
+    $content = Get-Content $patchFile -Raw -Encoding UTF8
+    if ($null -eq $content) { $content = '' }
+    # Match an INDENTED `- id: ui-aqua` (the one inside the insert block). A
+    # top-level row is not this insert, and counting it as "already registered"
+    # would leave link mode without a loader entry.
+    if ($content -match '(?m)^[ 	]+-[ 	]+id:[ 	]+ui-aqua[ 	]*$') {
         Write-Host '  already registered, skip.' -ForegroundColor DarkGray
     } else {
         $base = ($content -replace '(?s)\[\s*\]\s*$', '').TrimEnd()
         if ($base -eq '') { $new = $entryText + "`n" } else { $new = $base + "`n`n" + $entryText + "`n" }
         Write-Utf8NoBom -Path $patchFile -Text $new
     }
+}
+
+# Link mode writes the loader insert but no patch target; add the row so the
+# Plugins page can still enable/disable the plugin (see Add-AddressableRow).
+try {
+    $linkRow = Add-AddressableRow -PatchFile $patchFile -Id 'ui-aqua' -Package $plugin
+    Write-Host "  plugin row: $linkRow" -ForegroundColor DarkGray
+} catch {
+    Write-Host "  could not add the plugin row: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 Write-Host ''
